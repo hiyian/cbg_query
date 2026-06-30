@@ -1,0 +1,5 @@
+scripts/
+postgres/
+.env
+.env.*
+!.env.example

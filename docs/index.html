@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>角色查询</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <header class="header">
+    <p id="meta">请至少选择一个服务器后点击「查询」</p>
+  </header>
+
+  <section class="filters card">
+    <div class="row">
+      <label>大区
+        <select id="area">
+          <option value="">全部</option>
+        </select>
+      </label>
+      <label class="server-filter">
+        服务器
+        <div id="serverMulti" class="multiselect">
+          <button
+            id="serverMultiTrigger"
+            type="button"
+            class="multiselect-trigger"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="serverList"
+          >
+            <span id="serverMultiLabel" class="multiselect-label">请选择服务器</span>
+            <span class="multiselect-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="serverMultiPanel" class="multiselect-panel" hidden>
+            <div class="multiselect-toolbar">
+              <button id="selectAllServers" type="button" class="link-btn">全选</button>
+              <button id="clearServers" type="button" class="link-btn">清空</button>
+            </div>
+            <div id="serverList" class="multiselect-options" role="listbox" aria-multiselectable="true"></div>
+          </div>
+        </div>
+      </label>
+      <label>金币（万）≥<input id="goldMin" type="number" placeholder="如 100" step="1"></label>
+      <label>角色<input id="roleName" type="search" placeholder="角色名"></label>
+      <label>门派
+        <select id="school">
+          <option value="">全部</option>
+        </select>
+      </label>
+      <label>最低价<input id="priceMin" type="number" placeholder="元"></label>
+      <label>最高价<input id="priceMax" type="number" placeholder="元"></label>
+      <label>金币/价格 ≥<input id="ratioMin" type="number" placeholder="如 0.60" step="0.01" min="0"></label>
+      <button id="searchBtn" type="button">查询</button>
+    </div>
+    <div class="row filter-chips-row">
+      <div class="chip-group">
+        <span class="chip-group-label">上架状态</span>
+        <div class="chip-list" role="group" aria-label="上架状态">
+          <button id="saleFairShow" type="button" class="chip chip-sale-fair" data-value="fair_show" aria-pressed="false">公示期</button>
+          <button id="saleOnsale" type="button" class="chip chip-sale-onsale" data-value="onsale" aria-pressed="false">上架中</button>
+        </div>
+      </div>
+      <div class="chip-group">
+        <span class="chip-group-label">重点物品</span>
+        <div class="chip-list" role="group" aria-label="重点物品">
+          <button id="hasShendoudou" type="button" class="chip chip-item-shendoudou" aria-pressed="false">神兜兜</button>
+          <button id="hasBaoshichui" type="button" class="chip chip-item-baoshichui" aria-pressed="false">宝石锤</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tabs card">
+    <button class="tab active" data-tab="roles">角色汇总</button>
+    <button class="tab" data-tab="details">明细列表</button>
+    <button class="tab" data-tab="pets">召唤灵</button>
+  </section>
+
+  <section id="pagination" class="pagination card" hidden>
+    <button id="prevPage" type="button">上一页</button>
+    <span id="pageInfo"></span>
+    <button id="nextPage" type="button">下一页</button>
+  </section>
+
+  <main>
+    <div id="rolesPanel" class="panel active"></div>
+    <div id="detailsPanel" class="panel"></div>
+    <div id="petsPanel" class="panel"></div>
+  </main>
+
+  <div id="roleModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-dialog">
+      <button class="modal-close" type="button" data-close aria-label="关闭">&times;</button>
+      <div id="roleModalBody"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
