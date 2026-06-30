@@ -651,20 +651,27 @@ function buildFilterOptions() {
 
 function apiBase() {
   const cfg = window.MHCBG_CONFIG || {};
-  return (cfg.apiBase || "").replace(/\/$/, "");
+  // 空字符串表示同域部署（Vercel），请求 /api/*
+  if (cfg.apiBase === undefined || cfg.apiBase === null) {
+    return "";
+  }
+  return String(cfg.apiBase).replace(/\/$/, "");
+}
+
+function apiUrl(path) {
+  const base = apiBase();
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return base ? `${base}${p}` : p;
 }
 
 async function loadMeta() {
-  const base = apiBase();
-  if (!base) throw new Error("未配置 apiBase");
-  const resp = await fetch(`${base}/api/meta`);
+  const resp = await fetch(apiUrl("/api/meta"));
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   META = await resp.json();
   buildFilterOptions();
 }
 
 async function fetchRoles(page = DATA.page) {
-  const base = apiBase();
   const f = getFilters();
   if (!f.serverKeys.length) {
     throw new Error("请至少选择一个服务器");
@@ -692,7 +699,7 @@ async function fetchRoles(page = DATA.page) {
   }
 
   meta.textContent = "加载中…";
-  const resp = await fetch(`${base}/api/roles?${params}`);
+  const resp = await fetch(`${apiUrl("/api/roles")}?${params}`);
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
     const detail = err.detail;
