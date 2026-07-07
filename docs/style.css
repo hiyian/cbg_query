@@ -513,6 +513,20 @@ body.modal-open { overflow: hidden; }
 .detail-header h2 { margin: 0 0 6px; font-size: 1.25rem; }
 .detail-header .price { color: var(--green); font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
 .detail-header .sub { color: var(--muted); font-size: 0.88rem; }
+.detail-header .official-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--green, #2fae6b);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.detail-header .official-link:hover { filter: brightness(1.08); }
 
 .detail-stats {
   display: grid;

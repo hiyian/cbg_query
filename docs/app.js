@@ -58,6 +58,18 @@ function roleKey(role) {
   return `${role._server_key || ""}:${role.ordersn}`;
 }
 
+function officialUrl(role) {
+  const sn = role.ordersn;
+  if (!sn) return null;
+  let sid = role.serverid;
+  if (!sid) {
+    const parts = String(sn).split("-");
+    if (parts.length >= 2) sid = parts[1];
+  }
+  if (!sid) return null;
+  return `https://my.cbg.163.com/cgi/mweb/equip/${sid}/${encodeURIComponent(sn)}`;
+}
+
 function goldWan(role) {
   const gold = Number(role.金币 ?? 0);
   return gold / 10000;
@@ -393,6 +405,7 @@ function showRoleDetail(role) {
 
   const equipGroups = groupEquips(role.equips);
   const summons = role.summons || [];
+  const url = officialUrl(role);
 
   roleModalBody.innerHTML = `
     <div class="detail-header">
@@ -401,6 +414,7 @@ function showRoleDetail(role) {
       <div class="sub">${esc(role.area_name)} · ${esc(role.server_name)} · ${esc(role.desc_sumup)}</div>
       <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 金币/价格 ${esc(fmtRatio(role))} · 物资比 ${esc(fmtMaterialRatio(role))}</div>
       <div class="sub">${esc(role.ordersn)}</div>
+      ${url ? `<a class="official-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">查看官方原页 ↗</a>` : ""}
     </div>
     <div class="detail-stats">
       ${stats.map(([label, value]) => `
