@@ -288,6 +288,8 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
         if sort == "pet_slot":
             value = role.get("宠物格子数")
             return float(value) if value is not None else -1.0
+        if sort == "shenshou":
+            return float(role.get("神兽数") or 0)
         if sort in item_sort_keys:
             return float(items.get(sort, 0))
         return material_ratio(role, items) or -1.0

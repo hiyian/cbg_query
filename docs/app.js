@@ -115,7 +115,8 @@ function materialRatio(role) {
   const gold = Number(role.金币 ?? 0);
   const jll = items.jinliulu || 0;
   const jllPart = jll >= 99 ? jll * 100 : 0;
-  const value = gold + (items.shendoudou || 0) * 30000 + (items.baoshichui || 0) * 25000 + jllPart;
+  const value = gold + (items.shendoudou || 0) * 30000 + (items.baoshichui || 0) * 25000 + jllPart
+    + shenshouCount(role) * SHENSHOU_GOLD;
   return value / price / 10000;
 }
 
@@ -132,7 +133,8 @@ function materialGold(role) {
   return gold
     + (items.shendoudou || 0) * 30000
     + (items.baoshichui || 0) * 25000
-    + (items.jinliulu || 0) * 100;
+    + (items.jinliulu || 0) * 100
+    + shenshouCount(role) * SHENSHOU_GOLD;
 }
 
 function fmtMaterialGold(role) {
@@ -162,6 +164,25 @@ function computeKeyItems(role) {
 function keyItemCount(role, key) {
   const items = role._key_items || computeKeyItems(role);
   return items[key] || 0;
+}
+
+const SHENSHOU_LIFE = 999999;
+const SHENSHOU_GOLD = 3000000;
+
+function shenshouCount(role) {
+  if (role["神兽数"] != null) return Number(role["神兽数"]) || 0;
+  let n = 0;
+  for (const pet of role.summons || []) {
+    if (Number(pet.life) === SHENSHOU_LIFE) n++;
+  }
+  return n;
+}
+
+function fmtLife(life) {
+  if (life == null || life === "") return "-";
+  const n = Number(life);
+  if (n === SHENSHOU_LIFE) return "永久";
+  return Number.isNaN(n) ? String(life) : n.toLocaleString("zh-CN");
 }
 
 function computeItemTotals(roles) {
@@ -380,10 +401,12 @@ function renderPetRow(pet) {
     pet.growth != null ? `成长${pet.growth}` : "",
     pet.fighting ? "参战" : "",
   ].filter(Boolean).join(" · ");
+  const isShenshou = Number(pet.life) === SHENSHOU_LIFE;
   return `<tr>
-    <td>${esc(pet.name)}</td>
+    <td>${esc(pet.name)}${isShenshou ? ' <span class="shenshou-tag">神兽</span>' : ""}</td>
     <td>${esc(pet.level ?? "-")}</td>
     <td>${esc(pet.pet_score ?? "-")}</td>
+    <td class="${isShenshou ? "shenshou" : ""}">${esc(fmtLife(pet.life))}</td>
     <td>${esc(pet.skills ?? "-")}</td>
     <td>${esc(extra)}</td>
   </tr>`;
@@ -401,7 +424,7 @@ function showRoleDetail(role) {
     ["银币", role.银币], ["仙玉", role.仙玉],
     ["人物评分", role["人物评分"]], ["装备评分", role["装备评分"]],
     ["召唤灵评分", role["召唤灵评分"]], ["修炼评分", role.修炼评分],
-    ["宠物格子", role["宠物格子数"]],
+    ["宠物格子", role["宠物格子数"]], ["神兽数", shenshouCount(role)],
   ];
 
   const equipGroups = groupEquips(role.equips);
@@ -441,7 +464,7 @@ function showRoleDetail(role) {
       <h3>召唤灵 (${summons.length})</h3>
       ${summons.length ? `
         <table class="detail-table">
-          <thead><tr><th>名称</th><th>等级</th><th>评分</th><th>技能</th><th>属性</th></tr></thead>
+          <thead><tr><th>名称</th><th>等级</th><th>评分</th><th>寿命</th><th>技能</th><th>属性</th></tr></thead>
           <tbody>${summons.map(renderPetRow).join("")}</tbody>
         </table>
       ` : '<div class="empty">无召唤灵</div>'}
@@ -459,7 +482,7 @@ function closeRoleModal() {
 
 const DESC_SORT_KEYS = new Set([
   "material_ratio", "material_gold", "gold_ratio", "gold", "freeze", "price", "xianyu",
-  "pet_slot", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi",
+  "pet_slot", "shenshou", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi",
 ]);
 
 const ROLE_SORT_KEYS = {
@@ -472,6 +495,7 @@ const ROLE_SORT_KEYS = {
   xianyu: (role) => Number(role.仙玉 ?? 0),
   level: (role) => Number(role.level ?? 0),
   pet_slot: (role) => Number(role["宠物格子数"] ?? 0),
+  shenshou: (role) => shenshouCount(role),
   shendoudou: (role) => keyItemCount(role, "shendoudou"),
   baoshichui: (role) => keyItemCount(role, "baoshichui"),
   jinliulu: (role) => keyItemCount(role, "jinliulu"),
@@ -531,6 +555,7 @@ function renderRoles(roles) {
       <th class="num sortable" data-sort="jinghua">${sortHeaderHtml("精华", "jinghua")}</th>
       <th class="num sortable" data-sort="wuse_shi">${sortHeaderHtml("四色石", "wuse_shi")}</th>
       <th class="num sortable" data-sort="pet_slot">${sortHeaderHtml("宠物格子", "pet_slot")}</th>
+      <th class="num sortable col-shenshou" data-sort="shenshou">${sortHeaderHtml("神兽", "shenshou")}</th>
       <th class="num">人物评分</th>
       <th class="num">装备评分</th>
       <th class="num">召唤灵评分</th>
@@ -557,6 +582,7 @@ function renderRoles(roles) {
         <td class="num item-jinghua">${esc(keyItemCount(r, "jinghua") || "-")}</td>
         <td class="num item-wuse-shi">${esc(keyItemCount(r, "wuse_shi") || "-")}</td>
         <td class="num">${esc(r["宠物格子数"] ?? "-")}</td>
+        <td class="num shenshou col-shenshou">${esc(shenshouCount(r) || "-")}</td>
         <td class="num">${esc(fmtNum(r["人物评分"]))}</td>
         <td class="num">${esc(fmtNum(r["装备评分"]))}</td>
         <td class="num">${esc(fmtNum(r["召唤灵评分"]))}</td>

@@ -9,6 +9,27 @@ SHENDOUDOU_GOLD = 30_000
 BAOSHICHUI_GOLD = 25_000
 JINLIULU_GOLD = 100
 JINLIULU_MIN_COUNT = 99
+SHENSHOU_GOLD = 3_000_000
+SHENSHOU_LIFE = 999999
+
+
+def shenshou_count(role: dict[str, Any]) -> int:
+    """神兽（寿命 999999 的召唤灵）数量。优先取抓取时算好的字段。"""
+    value = role.get("神兽数")
+    if value is not None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            pass
+    count = 0
+    for pet in role.get("summons") or []:
+        life = pet.get("life")
+        try:
+            if life is not None and int(life) == SHENSHOU_LIFE:
+                count += 1
+        except (TypeError, ValueError):
+            continue
+    return count
 
 
 def gold_wan(role: dict[str, Any]) -> float:
@@ -35,6 +56,7 @@ def estimated_material_gold(role: dict[str, Any], items: dict[str, int] | None =
         + counts.get("shendoudou", 0) * SHENDOUDOU_GOLD
         + counts.get("baoshichui", 0) * BAOSHICHUI_GOLD
         + counts.get("jinliulu", 0) * JINLIULU_GOLD
+        + shenshou_count(role) * SHENSHOU_GOLD
     )
 
 
@@ -49,6 +71,7 @@ def material_value(role: dict[str, Any], items: dict[str, int] | None = None) ->
         + counts.get("shendoudou", 0) * SHENDOUDOU_GOLD
         + counts.get("baoshichui", 0) * BAOSHICHUI_GOLD
         + jll_part
+        + shenshou_count(role) * SHENSHOU_GOLD
     )
 
 
@@ -63,6 +86,7 @@ def enrich_role(role: dict[str, Any]) -> dict[str, Any]:
     items = key_item_counts(role)
     role = dict(role)
     role["_key_items"] = items
+    role["神兽数"] = shenshou_count(role)
     role["gold_ratio"] = gold_ratio(role)
     role["material_gold"] = estimated_material_gold(role, items)
     role["material_ratio"] = material_ratio(role, items)

@@ -34,6 +34,7 @@ SORT_FIELDS = {
     "level",
     "xianyu",
     "pet_slot",
+    "shenshou",
     "shendoudou",
     "baoshichui",
     "jinliulu",
