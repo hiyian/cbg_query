@@ -189,6 +189,10 @@ body {
   color: #78c8ff;
   background: rgba(120, 200, 255, 0.15);
 }
+.sale-tag.sold {
+  color: #9aa7b8;
+  background: rgba(139, 156, 179, 0.16);
+}
 .sale-tag.unknown {
   color: var(--muted);
   background: rgba(139, 156, 179, 0.12);
@@ -252,6 +256,11 @@ body {
   color: #3ecf8e;
   border-color: rgba(62, 207, 142, 0.45);
   background: rgba(62, 207, 142, 0.12);
+}
+.chip-sale-sold[aria-pressed="true"] {
+  color: #c3ccd8;
+  border-color: rgba(139, 156, 179, 0.5);
+  background: rgba(139, 156, 179, 0.14);
 }
 .chip-item-shendoudou[aria-pressed="true"] {
   color: #ff8cc8;

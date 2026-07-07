@@ -6,11 +6,13 @@ from typing import Any
 SALE_FAIR_SHOW = "fair_show"
 SALE_ONSALE = "onsale"
 SALE_REVIEWING = "reviewing"
+SALE_SOLD = "sold"
 
 SALE_LABELS = {
     SALE_FAIR_SHOW: "公示期",
     SALE_ONSALE: "上架中",
     SALE_REVIEWING: "审核中",
+    SALE_SOLD: "已售出",
 }
 
 

@@ -206,7 +206,14 @@ def fetch_meta() -> dict[str, Any]:
 
 def _row_to_role(row: dict[str, Any]) -> dict[str, Any]:
     payload = _json_load(row["payload"]) or {}
-    sale_status = row.get("sale_status") or payload.get("sale_status")
+    column_status = row.get("sale_status")
+    sale_status = column_status or payload.get("sale_status")
+    # 以 roles 表的 sale_status 列为准（差集标记的 sold 在这里），
+    # payload 里的旧 label 可能已过期。
+    if column_status:
+        status_label = sale_status_label(column_status)
+    else:
+        status_label = payload.get("sale_status_label") or sale_status_label(sale_status)
     selling_time = row.get("selling_time")
     if selling_time is None:
         selling_time = payload.get("selling_time")
@@ -220,7 +227,7 @@ def _row_to_role(row: dict[str, Any]) -> dict[str, Any]:
         "price": float(row["price"]) if row["price"] is not None else None,
         **payload,
         "sale_status": sale_status,
-        "sale_status_label": payload.get("sale_status_label") or sale_status_label(sale_status),
+        "sale_status_label": status_label,
         "selling_time": selling_time,
         "金币": row["gold"],
         "冻结金币": row["frozen_gold_wan"],

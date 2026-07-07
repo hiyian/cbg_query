@@ -227,8 +227,9 @@ function fmtSaleStatus(role) {
 }
 
 function fmtSaleTime(role) {
-  if (role.sale_time_text) return role.sale_time_text;
   const status = role.sale_status;
+  if (status === "sold") return "已售出";
+  if (role.sale_time_text) return role.sale_time_text;
   const sellingTime = Number(role.selling_time || 0);
   if (!status || !sellingTime) return "-";
 
@@ -265,7 +266,7 @@ function isChipActive(id) {
 }
 
 function getSelectedSaleStatuses() {
-  return ["saleFairShow", "saleOnsale"]
+  return ["saleFairShow", "saleOnsale", "saleSold"]
     .filter((id) => isChipActive(id))
     .map((id) => $(`#${id}`).dataset.value);
 }

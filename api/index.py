@@ -88,7 +88,7 @@ def list_roles(
     if sort not in SORT_FIELDS:
         raise HTTPException(status_code=400, detail=f"不支持的排序字段: {sort}")
 
-    allowed_sale_status = {"fair_show", "onsale", "reviewing"}
+    allowed_sale_status = {"fair_show", "onsale", "reviewing", "sold"}
     sale_statuses = [s.strip() for s in (sale_status or []) if s and s.strip()]
     invalid = [s for s in sale_statuses if s not in allowed_sale_status]
     if invalid:
