@@ -388,6 +388,7 @@ function showRoleDetail(role) {
     ["银币", role.银币], ["仙玉", role.仙玉],
     ["人物评分", role["人物评分"]], ["装备评分", role["装备评分"]],
     ["召唤灵评分", role["召唤灵评分"]], ["修炼评分", role.修炼评分],
+    ["宠物格子", role["宠物格子数"]],
   ];
 
   const equipGroups = groupEquips(role.equips);
@@ -443,7 +444,7 @@ function closeRoleModal() {
 
 const DESC_SORT_KEYS = new Set([
   "material_ratio", "material_gold", "gold_ratio", "gold", "freeze", "price", "xianyu",
-  "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi",
+  "pet_slot", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi",
 ]);
 
 const ROLE_SORT_KEYS = {
@@ -455,6 +456,7 @@ const ROLE_SORT_KEYS = {
   freeze: (role) => freezeGold(role) ?? -1,
   xianyu: (role) => Number(role.仙玉 ?? 0),
   level: (role) => Number(role.level ?? 0),
+  pet_slot: (role) => Number(role["宠物格子数"] ?? 0),
   shendoudou: (role) => keyItemCount(role, "shendoudou"),
   baoshichui: (role) => keyItemCount(role, "baoshichui"),
   jinliulu: (role) => keyItemCount(role, "jinliulu"),
@@ -513,6 +515,7 @@ function renderRoles(roles) {
       <th class="num sortable" data-sort="jinliulu">${sortHeaderHtml("金柳露", "jinliulu")}</th>
       <th class="num sortable" data-sort="jinghua">${sortHeaderHtml("精华", "jinghua")}</th>
       <th class="num sortable" data-sort="wuse_shi">${sortHeaderHtml("四色石", "wuse_shi")}</th>
+      <th class="num sortable" data-sort="pet_slot">${sortHeaderHtml("宠物格子", "pet_slot")}</th>
       <th class="num">人物评分</th>
       <th class="num">装备评分</th>
       <th class="num">召唤灵评分</th>
@@ -538,6 +541,7 @@ function renderRoles(roles) {
         <td class="num item-jinliulu">${esc(keyItemCount(r, "jinliulu") || "-")}</td>
         <td class="num item-jinghua">${esc(keyItemCount(r, "jinghua") || "-")}</td>
         <td class="num item-wuse-shi">${esc(keyItemCount(r, "wuse_shi") || "-")}</td>
+        <td class="num">${esc(r["宠物格子数"] ?? "-")}</td>
         <td class="num">${esc(fmtNum(r["人物评分"]))}</td>
         <td class="num">${esc(fmtNum(r["装备评分"]))}</td>
         <td class="num">${esc(fmtNum(r["召唤灵评分"]))}</td>

@@ -33,6 +33,7 @@ SORT_FIELDS = {
     "freeze",
     "level",
     "xianyu",
+    "pet_slot",
     "shendoudou",
     "baoshichui",
     "jinliulu",
