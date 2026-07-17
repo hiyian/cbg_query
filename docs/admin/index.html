@@ -5,30 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
   <title>控制台</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="admin.css">
 </head>
 <body>
   <div id="loginView" class="login-wrap">
-    <div class="login-atmosphere" aria-hidden="true"></div>
-    <form id="loginForm" class="login-card">
-      <p class="login-kicker">Console</p>
+    <form id="loginForm" class="login-card card">
       <h1>登录</h1>
-      <p class="login-sub">请输入访问口令继续</p>
+      <p class="muted">请输入访问口令继续</p>
       <label class="login-field">
-        <span>访问口令</span>
+        访问口令
         <input id="adminToken" type="password" placeholder="••••••••" autocomplete="current-password" required>
       </label>
-      <button type="submit" class="login-submit">进入</button>
+      <button type="submit" class="primary-btn">进入</button>
       <p id="loginError" class="error" hidden></p>
     </form>
   </div>
 
   <div id="appView" hidden>
-    <header class="top">
-      <strong class="top-brand">控制台</strong>
+    <header class="header top">
+      <div class="top-left">
+        <h1>控制台</h1>
+        <p class="muted">卡密 · 埋点 · 反馈</p>
+      </div>
       <nav class="tabs">
         <button type="button" class="tab active" data-tab="keys">卡密</button>
         <button type="button" class="tab" data-tab="events">埋点</button>
@@ -53,20 +51,20 @@
             </label>
             <label>有效天数 <input id="genDays" type="number" min="1" value="7"></label>
             <label>备注 <input id="genNote" type="text" placeholder="可选"></label>
-            <button type="button" id="genBtn">批量生成</button>
+            <button type="button" id="genBtn" class="primary-btn">批量生成</button>
           </div>
           <div class="count-presets" id="countPresets">
             <span class="muted">快捷数量：</span>
-            <button type="button" class="ghost" data-count="1">1</button>
-            <button type="button" class="ghost" data-count="5">5</button>
-            <button type="button" class="ghost" data-count="10">10</button>
-            <button type="button" class="ghost" data-count="20">20</button>
-            <button type="button" class="ghost" data-count="50">50</button>
+            <button type="button" class="link-btn" data-count="1">1</button>
+            <button type="button" class="link-btn" data-count="5">5</button>
+            <button type="button" class="link-btn" data-count="10">10</button>
+            <button type="button" class="link-btn" data-count="20">20</button>
+            <button type="button" class="link-btn" data-count="50">50</button>
           </div>
           <div id="genResultWrap" hidden>
             <div class="row between gen-result-head">
               <strong id="genResultTitle">已生成</strong>
-              <button type="button" class="ghost" id="copyCodesBtn">复制全部卡密</button>
+              <button type="button" class="link-btn" id="copyCodesBtn">复制全部卡密</button>
             </div>
             <pre id="genResult" class="gen-result"></pre>
           </div>
@@ -81,7 +79,7 @@
                 <option value="test">测试</option>
                 <option value="official">正式</option>
               </select>
-              <button type="button" id="refreshKeys">刷新</button>
+              <button type="button" id="refreshKeys" class="ghost">刷新</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -127,7 +125,7 @@
             <div class="row">
               <input id="eventFilter" type="text" placeholder="事件名">
               <input id="eventMachine" type="text" placeholder="机器码">
-              <button type="button" id="refreshEvents">查询</button>
+              <button type="button" id="refreshEvents" class="ghost">查询</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -150,8 +148,8 @@
       <section id="panel-feedbacks" class="panel">
         <div class="card">
           <div class="row between">
-            <h2>反馈（只读）</h2>
-            <button type="button" id="refreshFeedbacks">刷新</button>
+            <h2>反馈</h2>
+            <button type="button" id="refreshFeedbacks" class="ghost">刷新</button>
           </div>
           <div class="table-wrap">
             <table>
