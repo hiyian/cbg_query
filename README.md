@@ -4,7 +4,7 @@
 
 不含爬虫；数据由上级 `mhcbg` 项目抓取后，通过同步脚本写入 Postgres。
 
-另含 **寻觅助手** 卡密管理：`/admin` 后台 + `/api/license*` / `/api/events` / `/api/feedback`。
+另含 **寻觅助手** 卡密管理：`/blue` 后台 + `/api/license*` / `/api/events` / `/api/feedback`。
 
 ## 目录
 
@@ -38,7 +38,7 @@ psql "$POSTGRES_URL_NON_POOLING" -f postgres/init.sql
 | `ADMIN_TOKEN` | 管理后台口令（请求头 `X-Admin-Token`） |
 | `APP_ID` | 客户端标识，默认 `xunmi` |
 
-管理页：部署后打开 `https://你的域名/admin`，输入 `ADMIN_TOKEN`。
+管理页：部署后打开 `https://你的域名/blue`，输入 `ADMIN_TOKEN`。
 
 ## 2. 同步数据（本地运行）
 

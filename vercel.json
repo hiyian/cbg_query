@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" },
-    { "source": "/admin", "destination": "/docs/admin/index.html" },
-    { "source": "/admin/(.*)", "destination": "/docs/admin/$1" },
+    { "source": "/blue", "destination": "/docs/admin/index.html" },
+    { "source": "/blue/(.*)", "destination": "/docs/admin/$1" },
     { "source": "/", "destination": "/docs/index.html" },
     { "source": "/(.*)", "destination": "/docs/$1" }
   ]
