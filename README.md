@@ -4,16 +4,18 @@
 
 不含爬虫；数据由上级 `mhcbg` 项目抓取后，通过同步脚本写入 Postgres。
 
+另含 **寻觅助手** 卡密管理：`/admin` 后台 + `/api/license*` / `/api/events` / `/api/feedback`。
+
 ## 目录
 
 ```
 cbg_query/
 ├── api/index.py       # FastAPI + Vercel Serverless 入口
-├── cbg/               # 查询逻辑（Postgres）
-├── docs/              # 静态前端
-├── postgres/init.sql  # 建表 SQL
+├── cbg/               # 查询逻辑 + license_store（卡密）
+├── docs/              # 静态前端（含 docs/admin 管理页）
+├── postgres/init.sql  # 建表 SQL（含 license_* / analytics / feedbacks）
 ├── scripts/           # 本地工具（不部署）
-└── vercel.json        # 路由：/ → 前端，/api/* → 后端
+└── vercel.json        # 路由
 ```
 
 ## 1. 初始化 Postgres
@@ -25,6 +27,18 @@ cbg_query/
 ```bash
 psql "$POSTGRES_URL_NON_POOLING" -f postgres/init.sql
 ```
+
+若库已存在旧表，可只执行 `init.sql` 中「寻觅助手」相关的 `CREATE TABLE` 段落。
+
+## 环境变量
+
+| 变量 | 说明 |
+|------|------|
+| `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` | Vercel 绑定后自动注入 |
+| `ADMIN_TOKEN` | 管理后台口令（请求头 `X-Admin-Token`） |
+| `APP_ID` | 客户端标识，默认 `xunmi` |
+
+管理页：部署后打开 `https://你的域名/admin`，输入 `ADMIN_TOKEN`。
 
 ## 2. 同步数据（本地运行）
 

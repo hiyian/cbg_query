@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>寻觅助手 · 管理后台</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="loginView" class="login-wrap">
+    <form id="loginForm" class="login-card">
+      <h1>寻觅助手管理</h1>
+      <p class="muted">输入 ADMIN_TOKEN（与 Vercel 环境变量一致）</p>
+      <input id="adminToken" type="password" placeholder="Admin Token" autocomplete="current-password" required>
+      <button type="submit">进入</button>
+      <p id="loginError" class="error" hidden></p>
+    </form>
+  </div>
+
+  <div id="appView" hidden>
+    <header class="top">
+      <strong>寻觅助手管理</strong>
+      <nav class="tabs">
+        <button type="button" class="tab active" data-tab="keys">卡密</button>
+        <button type="button" class="tab" data-tab="events">埋点</button>
+        <button type="button" class="tab" data-tab="feedbacks">反馈</button>
+      </nav>
+      <button type="button" id="logoutBtn" class="ghost">退出</button>
+    </header>
+
+    <main>
+      <section id="panel-keys" class="panel active">
+        <div class="toolbar card">
+          <h2>生成卡密</h2>
+          <div class="row">
+            <label>类型
+              <select id="genKind">
+                <option value="test">测试卡（默认 7 天，不限机器）</option>
+                <option value="official">正式卡（一机绑定）</option>
+              </select>
+            </label>
+            <label>一次生成数量
+              <input id="genCount" type="number" min="1" max="100" value="10">
+            </label>
+            <label>有效天数 <input id="genDays" type="number" min="1" value="7"></label>
+            <label>备注 <input id="genNote" type="text" placeholder="可选"></label>
+            <button type="button" id="genBtn">批量生成</button>
+          </div>
+          <div class="count-presets" id="countPresets">
+            <span class="muted">快捷数量：</span>
+            <button type="button" class="ghost" data-count="1">1</button>
+            <button type="button" class="ghost" data-count="5">5</button>
+            <button type="button" class="ghost" data-count="10">10</button>
+            <button type="button" class="ghost" data-count="20">20</button>
+            <button type="button" class="ghost" data-count="50">50</button>
+          </div>
+          <div id="genResultWrap" hidden>
+            <div class="row between gen-result-head">
+              <strong id="genResultTitle">已生成</strong>
+              <button type="button" class="ghost" id="copyCodesBtn">复制全部卡密</button>
+            </div>
+            <pre id="genResult" class="gen-result"></pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row between">
+            <h2>卡密列表</h2>
+            <div class="row">
+              <select id="filterKind">
+                <option value="">全部类型</option>
+                <option value="test">测试</option>
+                <option value="official">正式</option>
+              </select>
+              <button type="button" id="refreshKeys">刷新</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>卡密</th>
+                  <th>类型</th>
+                  <th>状态</th>
+                  <th>到期</th>
+                  <th>机器数</th>
+                  <th>备注</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="keysBody"></tbody>
+            </table>
+          </div>
+          <div id="machinesBox" class="machines" hidden>
+            <h3>机器码记录 <span id="machinesTitle"></span></h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>机器码</th>
+                    <th>标签</th>
+                    <th>首次</th>
+                    <th>最近</th>
+                    <th>次数</th>
+                  </tr>
+                </thead>
+                <tbody id="machinesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-events" class="panel">
+        <div class="card">
+          <div class="row between">
+            <h2>埋点</h2>
+            <div class="row">
+              <input id="eventFilter" type="text" placeholder="事件名">
+              <input id="eventMachine" type="text" placeholder="机器码">
+              <button type="button" id="refreshEvents">查询</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>事件</th>
+                  <th>机器码</th>
+                  <th>卡密ID</th>
+                  <th>属性</th>
+                </tr>
+              </thead>
+              <tbody id="eventsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-feedbacks" class="panel">
+        <div class="card">
+          <div class="row between">
+            <h2>反馈（只读）</h2>
+            <button type="button" id="refreshFeedbacks">刷新</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>分类</th>
+                  <th>内容</th>
+                  <th>机器码</th>
+                  <th>联系</th>
+                  <th>版本/系统</th>
+                </tr>
+              </thead>
+              <tbody id="feedbacksBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
