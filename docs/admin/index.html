@@ -4,23 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
-  <title>寻觅助手 · 管理后台</title>
+  <title>控制台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="admin.css">
 </head>
 <body>
   <div id="loginView" class="login-wrap">
+    <div class="login-atmosphere" aria-hidden="true"></div>
     <form id="loginForm" class="login-card">
-      <h1>寻觅助手管理</h1>
-      <p class="muted">输入 ADMIN_TOKEN（与 Vercel 环境变量一致）</p>
-      <input id="adminToken" type="password" placeholder="Admin Token" autocomplete="current-password" required>
-      <button type="submit">进入</button>
+      <p class="login-kicker">Console</p>
+      <h1>登录</h1>
+      <p class="login-sub">请输入访问口令继续</p>
+      <label class="login-field">
+        <span>访问口令</span>
+        <input id="adminToken" type="password" placeholder="••••••••" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="login-submit">进入</button>
       <p id="loginError" class="error" hidden></p>
     </form>
   </div>
 
   <div id="appView" hidden>
     <header class="top">
-      <strong>寻觅助手管理</strong>
+      <strong class="top-brand">控制台</strong>
       <nav class="tabs">
         <button type="button" class="tab active" data-tab="keys">卡密</button>
         <button type="button" class="tab" data-tab="events">埋点</button>
