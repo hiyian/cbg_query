@@ -88,8 +88,29 @@
     });
   });
 
+  function setDuration(days, hours, minutes) {
+    $("genDays").value = String(Math.max(0, Number(days) || 0));
+    $("genHours").value = String(Math.max(0, Number(hours) || 0));
+    $("genMinutes").value = String(Math.max(0, Number(minutes) || 0));
+  }
+
+  function readDuration() {
+    const days = Math.max(0, Math.floor(Number($("genDays").value) || 0));
+    const hours = Math.max(0, Math.floor(Number($("genHours").value) || 0));
+    const minutes = Math.max(0, Math.floor(Number($("genMinutes").value) || 0));
+    return { days, hours, minutes };
+  }
+
+  function formatDuration(d, h, m) {
+    const parts = [];
+    if (d) parts.push(`${d} 天`);
+    if (h) parts.push(`${h} 小时`);
+    if (m) parts.push(`${m} 分钟`);
+    return parts.length ? parts.join(" ") : "0";
+  }
+
   $("genKind").addEventListener("change", () => {
-    $("genDays").value = $("genKind").value === "test" ? 7 : 30;
+    setDuration($("genKind").value === "test" ? 7 : 30, 0, 0);
     if ($("genKind").value === "test" && Number($("genCount").value) < 2) {
       $("genCount").value = 10;
     }
@@ -101,23 +122,37 @@
     });
   });
 
+  document.querySelectorAll("#durationPresets [data-d]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setDuration(btn.dataset.d, btn.dataset.h, btn.dataset.m);
+    });
+  });
+
   let lastGeneratedCodes = [];
 
   $("genBtn").addEventListener("click", async () => {
     try {
       const count = Math.max(1, Math.min(100, Number($("genCount").value) || 1));
       $("genCount").value = String(count);
+      const dur = readDuration();
+      if (dur.days * 24 * 60 + dur.hours * 60 + dur.minutes < 1) {
+        alert("有效期至少 1 分钟");
+        return;
+      }
       const body = {
         kind: $("genKind").value,
         count,
-        days: Number($("genDays").value) || undefined,
+        days: dur.days,
+        hours: dur.hours,
+        minutes: dur.minutes,
         note: $("genNote").value.trim(),
       };
       const data = await req("/api/admin/keys", { method: "POST", body: JSON.stringify(body) });
       const keys = data.keys || [];
       lastGeneratedCodes = keys.map((k) => k.code);
       $("genResultWrap").hidden = false;
-      $("genResultTitle").textContent = `已生成 ${keys.length} 张（${body.kind === "test" ? "测试" : "正式"}）`;
+      $("genResultTitle").textContent =
+        `已生成 ${keys.length} 张（${body.kind === "test" ? "测试" : "正式"} · ${formatDuration(dur.days, dur.hours, dur.minutes)}）`;
       $("genResult").textContent = lastGeneratedCodes.join("\n");
       loadKeys();
     } catch (e) {

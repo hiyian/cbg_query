@@ -65,21 +65,56 @@ def _effective_status(row: dict[str, Any], now: datetime | None = None) -> str:
     return status
 
 
+def _parse_nonneg_int(value: Any, *, field: str) -> int:
+    if value is None or value == "":
+        return 0
+    try:
+        n = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field} 须为整数") from exc
+    if n < 0:
+        raise ValueError(f"{field} 不能为负数")
+    return n
+
+
+def resolve_duration(
+    *,
+    kind: str,
+    days: Any = None,
+    hours: Any = None,
+    minutes: Any = None,
+) -> timedelta:
+    """解析有效期。未传任何时长时：测试卡默认 7 天，正式卡默认 30 天。"""
+    has_any = days is not None or hours is not None or minutes is not None
+    if not has_any:
+        return timedelta(days=7 if kind == "test" else 30)
+    d = _parse_nonneg_int(days, field="days")
+    h = _parse_nonneg_int(hours, field="hours")
+    m = _parse_nonneg_int(minutes, field="minutes")
+    total = timedelta(days=d, hours=h, minutes=m)
+    if total.total_seconds() < 60:
+        raise ValueError("有效期至少 1 分钟")
+    # 上限约 10 年，避免误填
+    if total > timedelta(days=3650):
+        raise ValueError("有效期过长（最多 3650 天）")
+    return total
+
+
 def create_keys(
     *,
     kind: str,
     count: int = 1,
     days: int | None = None,
+    hours: int | None = None,
+    minutes: int | None = None,
     note: str = "",
     created_by: str = "admin",
 ) -> list[dict[str, Any]]:
     if kind not in ("test", "official"):
         raise ValueError("kind 须为 test 或 official")
     count = max(1, min(int(count), 100))
-    if days is None:
-        days = 7 if kind == "test" else 30
-    days = max(1, int(days))
-    expires_at = _now() + timedelta(days=days)
+    duration = resolve_duration(kind=kind, days=days, hours=hours, minutes=minutes)
+    expires_at = _now() + duration
     max_machines = None if kind == "test" else 1
 
     created: list[dict[str, Any]] = []

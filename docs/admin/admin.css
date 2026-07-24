@@ -67,6 +67,10 @@ input, select, button, textarea {
   font: inherit;
   min-width: 120px;
 }
+input.dur {
+  min-width: 72px;
+  width: 72px;
+}
 button {
   cursor: pointer;
   background: var(--accent);

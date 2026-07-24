@@ -205,6 +205,8 @@ def admin_create_keys(payload: Annotated[dict[str, Any], Body(...)]) -> dict:
             kind=str(payload.get("kind") or "test"),
             count=int(payload.get("count") or 1),
             days=payload.get("days"),
+            hours=payload.get("hours"),
+            minutes=payload.get("minutes"),
             note=str(payload.get("note") or ""),
             created_by=str(payload.get("created_by") or "admin"),
         )
