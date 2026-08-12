@@ -4,7 +4,12 @@ import json
 import os
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Iterator
+
+_PKG_ROOT = Path(__file__).resolve().parents[1]
+_PINYIN_INDEX_PATH = _PKG_ROOT / "data" / "server_pinyin.json"
+_pinyin_index_cache: Any = None
 
 import psycopg
 from psycopg.rows import dict_row
@@ -163,6 +168,47 @@ def upsert_role(conn: psycopg.Connection, server_id: int, role: dict[str, Any]) 
         )
 
 
+def _load_pinyin_index() -> dict[str, dict[str, str]]:
+    """serverid / server_key -> {pinyin, area_pinyin}"""
+    global _pinyin_index_cache
+    if _pinyin_index_cache is not None:
+        return _pinyin_index_cache
+    by_id: dict[str, dict[str, str]] = {}
+    by_key: dict[str, dict[str, str]] = {}
+    if _PINYIN_INDEX_PATH.exists():
+        try:
+            rows = json.loads(_PINYIN_INDEX_PATH.read_text(encoding="utf-8"))
+            for row in rows:
+                info = {
+                    "pinyin": row.get("pinyin") or "",
+                    "area_pinyin": row.get("area_pinyin") or "",
+                }
+                sid = row.get("serverid")
+                if sid is not None:
+                    by_id[str(sid)] = info
+                key = row.get("key")
+                if key:
+                    by_key[str(key)] = info
+        except (json.JSONDecodeError, OSError):
+            pass
+    _pinyin_index_cache = {"by_id": by_id, "by_key": by_key}
+    return _pinyin_index_cache
+
+
+def _attach_server_pinyin(server: dict[str, Any]) -> dict[str, Any]:
+    idx = _load_pinyin_index()
+    info = idx["by_key"].get(server.get("key") or "") or idx["by_id"].get(
+        str(server.get("serverid") or "")
+    )
+    pinyin = (info or {}).get("pinyin") or server.get("key") or ""
+    area_pinyin = (info or {}).get("area_pinyin") or ""
+    return {
+        **server,
+        "pinyin": pinyin,
+        "area_pinyin": area_pinyin,
+    }
+
+
 def fetch_servers(conn: psycopg.Connection) -> list[dict[str, Any]]:
     with conn.cursor() as cur:
         cur.execute(
@@ -193,12 +239,14 @@ def fetch_meta() -> dict[str, Any]:
         "areas": areas,
         "schools": schools,
         "servers": [
-            {
-                "key": s["key"],
-                "serverid": s["serverid"],
-                "server_name": s["server_name"],
-                "area_name": s["area_name"],
-            }
+            _attach_server_pinyin(
+                {
+                    "key": s["key"],
+                    "serverid": s["serverid"],
+                    "server_name": s["server_name"],
+                    "area_name": s["area_name"],
+                }
+            )
             for s in servers
         ],
     }

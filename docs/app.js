@@ -241,6 +241,72 @@ function setServerMultiOpen(open) {
   panel.hidden = !open;
   trigger.setAttribute("aria-expanded", open ? "true" : "false");
   $("#serverMulti").classList.toggle("open", open);
+  if (open) {
+    requestAnimationFrame(() => {
+      const input = $("#serverSearch");
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  } else {
+    const input = $("#serverSearch");
+    if (input) input.value = "";
+    fillServerOptions($("#area").value);
+  }
+}
+
+function normalizeServerSearch(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[\s·\-_.]/g, "");
+}
+
+function serverHaystack(s) {
+  const pinyin = s.pinyin || s.key || "";
+  return [
+    s.server_name,
+    s.area_name,
+    s.key,
+    pinyin,
+    s.area_pinyin,
+    pinyin.replace(/_/g, " "),
+    pinyin.replace(/_/g, ""),
+  ]
+    .map(normalizeServerSearch)
+    .join("|");
+}
+
+function serverMatchesSearch(s, query) {
+  const q = (query || "").trim();
+  if (!q) return true;
+  const nq = normalizeServerSearch(q);
+  if (nq && serverHaystack(s).includes(nq)) return true;
+  if ((s.server_name || "").includes(q)) return true;
+  if ((s.area_name || "").includes(q)) return true;
+  return false;
+}
+
+function highlightMatch(text, query) {
+  const raw = String(text ?? "");
+  if (!raw) return "";
+  const q = (query || "").trim();
+  if (!q) return esc(raw);
+  const lower = raw.toLowerCase();
+  const ql = q.toLowerCase();
+  const idx = lower.indexOf(ql);
+  if (idx >= 0) {
+    return (
+      esc(raw.slice(0, idx))
+      + `<mark class="search-hit">${esc(raw.slice(idx, idx + q.length))}</mark>`
+      + esc(raw.slice(idx + q.length))
+    );
+  }
+  return esc(raw);
+}
+
+function getServerSearchQuery() {
+  return ($("#serverSearch")?.value || "").trim();
 }
 
 function fmtSaleStatus(role) {
@@ -664,16 +730,23 @@ function fillSelect(id, values) {
 
 function fillServerOptions(areaFilter = "") {
   const el = $("#serverList");
+  const query = getServerSearchQuery();
   const list = META.servers
     .filter((s) => !areaFilter || s.area_name === areaFilter)
+    .filter((s) => serverMatchesSearch(s, query))
     .sort((a, b) => a.server_name.localeCompare(b.server_name, "zh-CN"));
   if (!list.length) {
-    el.innerHTML = '<span class="empty-hint">暂无服务器</span>';
+    el.innerHTML = query
+      ? '<span class="multiselect-empty">无匹配服务器，试试拼音或中文</span>'
+      : '<span class="empty-hint">暂无服务器</span>';
     updateServerMultiLabel();
     return;
   }
   el.innerHTML = list.map((s) => {
     const active = selectedServerKeys.has(s.key);
+    const hint = query && (s.pinyin || s.key)
+      ? `<span class="option-sub">${esc(s.area_name || "")}${s.area_name ? " · " : ""}${esc(s.pinyin || s.key)}</span>`
+      : "";
     return `<button
       type="button"
       class="multiselect-option${active ? " selected" : ""}"
@@ -681,7 +754,10 @@ function fillServerOptions(areaFilter = "") {
       role="option"
       aria-selected="${active ? "true" : "false"}"
     >
-      <span>${esc(s.server_name)}</span>
+      <span class="option-main">
+        <span>${highlightMatch(s.server_name, query)}</span>
+        ${hint}
+      </span>
       <span class="multiselect-check" aria-hidden="true">✓</span>
     </button>`;
   }).join("");
@@ -803,6 +879,19 @@ $("#area").addEventListener("change", () => {
   fillServerOptions($("#area").value);
 });
 
+$("#serverSearch").addEventListener("input", () => {
+  fillServerOptions($("#area").value);
+});
+
+$("#serverSearch").addEventListener("keydown", (e) => {
+  e.stopPropagation();
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const first = $("#serverList").querySelector(".multiselect-option");
+    if (first) first.click();
+  }
+});
+
 $("#serverMultiTrigger").addEventListener("click", () => {
   setServerMultiOpen($("#serverMultiPanel").hidden);
 });
@@ -826,10 +915,8 @@ $("#serverList").addEventListener("click", (e) => {
 $("#selectAllServers").addEventListener("click", () => {
   $("#serverList").querySelectorAll(".multiselect-option").forEach((option) => {
     selectedServerKeys.add(option.dataset.key);
-    option.classList.add("selected");
-    option.setAttribute("aria-selected", "true");
   });
-  updateServerMultiLabel();
+  fillServerOptions($("#area").value);
 });
 
 $("#clearServers").addEventListener("click", () => {

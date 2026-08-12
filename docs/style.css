@@ -100,12 +100,60 @@ body {
   z-index: 30;
   min-width: 100%;
   width: max-content;
-  max-width: min(320px, 90vw);
+  max-width: min(360px, 90vw);
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+}
+.multiselect-search-wrap {
+  padding: 8px 10px 0;
+}
+.multiselect-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #111822;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.multiselect-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(91, 141, 239, 0.2);
+}
+.multiselect-search::placeholder {
+  color: var(--muted);
+}
+.multiselect-option .option-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.multiselect-option .option-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.multiselect-option mark.search-hit {
+  background: rgba(91, 141, 239, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.multiselect-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 .multiselect-toolbar {
   display: flex;
