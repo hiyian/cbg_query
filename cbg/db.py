@@ -22,6 +22,7 @@ from .role_metrics import (
     gold_wan,
     key_item_counts,
     material_ratio,
+    pet_slot_count,
 )
 from .sale_status import sale_status_label
 
@@ -290,6 +291,7 @@ def _match_role_filters(
     ratio_min: float | None,
     has_shendoudou: bool,
     has_baoshichui: bool,
+    pet_slot_min: int | None = None,
     sale_statuses: list[str] | None = None,
 ) -> bool:
     if sale_statuses:
@@ -307,6 +309,10 @@ def _match_role_filters(
         return False
     if has_baoshichui and items.get("baoshichui", 0) <= 0:
         return False
+    if pet_slot_min is not None:
+        slots = pet_slot_count(role)
+        if slots is None or slots <= pet_slot_min:
+            return False
     return True
 
 
@@ -334,7 +340,7 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
         if sort == "xianyu":
             return float(role.get("仙玉") or 0)
         if sort == "pet_slot":
-            value = role.get("宠物格子数")
+            value = pet_slot_count(role)
             return float(value) if value is not None else -1.0
         if sort == "shenshou":
             return float(role.get("神兽数") or 0)
@@ -364,6 +370,7 @@ def query_roles(
     ratio_min: float | None = None,
     has_shendoudou: bool = False,
     has_baoshichui: bool = False,
+    pet_slot_min: int | None = None,
     sale_statuses: list[str] | None = None,
 ) -> dict[str, Any]:
     if not server_keys:
@@ -438,6 +445,7 @@ def query_roles(
             ratio_min=ratio_min,
             has_shendoudou=has_shendoudou,
             has_baoshichui=has_baoshichui,
+            pet_slot_min=pet_slot_min,
             sale_statuses=sale_statuses,
         ):
             continue
@@ -544,3 +552,78 @@ def fetch_roles(*, server_key: str | None = None) -> dict[str, Any]:
         ],
         "roles": roles,
     }
+
+
+def backfill_pet_slots_in_pg(
+    slot_map: dict[tuple[str, str], int],
+    *,
+    dry_run: bool = False,
+    only_missing: bool = True,
+) -> dict[str, int]:
+    """用 (server_key, ordersn) → 格子数 映射回填 Postgres roles.payload。"""
+    stats = {"scanned": 0, "updated": 0, "skipped_has": 0, "no_source": 0}
+    with db_conn(prefer_non_pooling=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT r.id, r.ordersn, s.server_key, r.payload
+                FROM roles r
+                JOIN servers s ON s.id = r.server_id
+                ORDER BY r.id
+                """
+            )
+            rows = cur.fetchall()
+
+        for row in rows:
+            stats["scanned"] += 1
+            payload = _json_load(row["payload"]) or {}
+            if only_missing and pet_slot_count(payload) is not None:
+                stats["skipped_has"] += 1
+                continue
+            slot = slot_map.get((row["server_key"], row["ordersn"]))
+            if slot is None:
+                stats["no_source"] += 1
+                continue
+            stats["updated"] += 1
+            if dry_run:
+                continue
+            payload = dict(payload)
+            payload["宠物格子数"] = slot
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE roles SET payload = %s WHERE id = %s",
+                    (Jsonb(payload), row["id"]),
+                )
+    return stats
+
+
+def patch_role_pet_slot_in_pg(
+    *,
+    server_key: str,
+    ordersn: str,
+    pet_slots: int,
+    dry_run: bool = False,
+) -> bool:
+    with db_conn(prefer_non_pooling=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT r.id, r.payload
+                FROM roles r
+                JOIN servers s ON s.id = r.server_id
+                WHERE s.server_key = %s AND r.ordersn = %s
+                """,
+                (server_key, ordersn),
+            )
+            row = cur.fetchone()
+            if not row:
+                return False
+            if dry_run:
+                return True
+            payload = dict(_json_load(row["payload"]) or {})
+            payload["宠物格子数"] = pet_slots
+            cur.execute(
+                "UPDATE roles SET payload = %s WHERE id = %s",
+                (Jsonb(payload), row["id"]),
+            )
+    return True

@@ -36,6 +36,36 @@ const KEY_ITEMS = [
 
 const STONE_NAMES = new Set(["朱雀石", "青龙石", "白虎石", "玄武石"]);
 
+const DEFAULT_MATERIAL_PRICES = {
+  shendoudou: 30000,
+  baoshichui: 25000,
+  jinliulu: 100,
+  shenshou: 3000000,
+  jinliuluMinForRatio: 99,
+};
+const MATERIAL_PRICES_STORAGE_KEY = "cbg_material_prices";
+
+function loadMaterialPrices() {
+  try {
+    const raw = localStorage.getItem(MATERIAL_PRICES_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_MATERIAL_PRICES };
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_MATERIAL_PRICES, ...parsed };
+  } catch {
+    return { ...DEFAULT_MATERIAL_PRICES };
+  }
+}
+
+let materialPrices = loadMaterialPrices();
+
+function saveMaterialPrices() {
+  localStorage.setItem(MATERIAL_PRICES_STORAGE_KEY, JSON.stringify(materialPrices));
+}
+
+function getMaterialPrices() {
+  return materialPrices;
+}
+
 function matchKeyItem(name, item) {
   if (!name) return false;
   if (item.key === "shendoudou") return name === "神兜兜";
@@ -108,15 +138,18 @@ function fmtRatio(role) {
 }
 
 function materialRatio(role) {
-  if (role.material_ratio != null) return role.material_ratio;
+  const prices = getMaterialPrices();
   const price = Number(role.price ?? 0);
   if (!price) return null;
   const items = role._key_items || computeKeyItems(role);
   const gold = Number(role.金币 ?? 0);
   const jll = items.jinliulu || 0;
-  const jllPart = jll >= 99 ? jll * 100 : 0;
-  const value = gold + (items.shendoudou || 0) * 30000 + (items.baoshichui || 0) * 25000 + jllPart
-    + shenshouCount(role) * SHENSHOU_GOLD;
+  const jllPart = jll >= prices.jinliuluMinForRatio ? jll * prices.jinliulu : 0;
+  const value = gold
+    + (items.shendoudou || 0) * prices.shendoudou
+    + (items.baoshichui || 0) * prices.baoshichui
+    + jllPart
+    + shenshouCount(role) * prices.shenshou;
   return value / price / 10000;
 }
 
@@ -127,14 +160,14 @@ function fmtMaterialRatio(role) {
 }
 
 function materialGold(role) {
-  if (role.material_gold != null) return Number(role.material_gold);
+  const prices = getMaterialPrices();
   const items = role._key_items || computeKeyItems(role);
   const gold = Number(role.金币 ?? 0);
   return gold
-    + (items.shendoudou || 0) * 30000
-    + (items.baoshichui || 0) * 25000
-    + (items.jinliulu || 0) * 100
-    + shenshouCount(role) * SHENSHOU_GOLD;
+    + (items.shendoudou || 0) * prices.shendoudou
+    + (items.baoshichui || 0) * prices.baoshichui
+    + (items.jinliulu || 0) * prices.jinliulu
+    + shenshouCount(role) * prices.shenshou;
 }
 
 function fmtMaterialGold(role) {
@@ -167,7 +200,6 @@ function keyItemCount(role, key) {
 }
 
 const SHENSHOU_LIFE = 999999;
-const SHENSHOU_GOLD = 3000000;
 
 function shenshouCount(role) {
   if (role["神兽数"] != null) return Number(role["神兽数"]) || 0;
@@ -358,6 +390,18 @@ function getSelectedSaleStatuses() {
     .map((id) => $(`#${id}`).dataset.value);
 }
 
+function getPetSlotMinFilter() {
+  const raw = $("#petSlotMin")?.value;
+  if (raw !== "" && raw != null) {
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+  if (isChipActive("petSlotGt12")) {
+    return Number($("#petSlotGt12")?.dataset.min || 12);
+  }
+  return null;
+}
+
 function getFilters() {
   return {
     serverKeys: getSelectedServerKeys(),
@@ -370,6 +414,7 @@ function getFilters() {
     ratioMin: $("#ratioMin").value ? Number($("#ratioMin").value) : null,
     hasShendoudou: isChipActive("hasShendoudou"),
     hasBaoshichui: isChipActive("hasBaoshichui"),
+    petSlotMin: getPetSlotMinFilter(),
   };
 }
 
@@ -815,6 +860,7 @@ async function fetchRoles(page = DATA.page) {
   if (f.ratioMin != null) params.set("ratio_min", String(f.ratioMin));
   if (f.hasShendoudou) params.set("has_shendoudou", "true");
   if (f.hasBaoshichui) params.set("has_baoshichui", "true");
+  if (f.petSlotMin != null) params.set("pet_slot_min", String(f.petSlotMin));
   for (const status of f.saleStatuses) {
     params.append("sale_status", status);
   }
@@ -932,8 +978,57 @@ document.querySelectorAll(".chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     const active = chip.getAttribute("aria-pressed") === "true";
     chip.setAttribute("aria-pressed", active ? "false" : "true");
+    if (chip.id === "petSlotGt12") {
+      if (!active) {
+        $("#petSlotMin").value = chip.dataset.min || "12";
+      } else if ($("#petSlotMin").value === (chip.dataset.min || "12")) {
+        $("#petSlotMin").value = "";
+      }
+    }
   });
 });
+
+$("#petSlotMin")?.addEventListener("input", () => {
+  const chipMin = $("#petSlotGt12")?.dataset.min || "12";
+  const active = $("#petSlotMin").value === chipMin;
+  $("#petSlotGt12")?.setAttribute("aria-pressed", active ? "true" : "false");
+});
+
+function initMaterialPriceInputs() {
+  const fields = [
+    ["priceShendoudou", "shendoudou"],
+    ["priceBaoshichui", "baoshichui"],
+    ["priceJinliulu", "jinliulu"],
+    ["priceShenshou", "shenshou"],
+    ["priceJinliuluMin", "jinliuluMinForRatio"],
+  ];
+  for (const [id, key] of fields) {
+    const el = $(`#${id}`);
+    if (!el) continue;
+    el.value = String(materialPrices[key]);
+    el.addEventListener("change", () => {
+      const value = Number(el.value);
+      if (!Number.isFinite(value) || value < 0) {
+        el.value = String(materialPrices[key]);
+        return;
+      }
+      materialPrices = { ...materialPrices, [key]: value };
+      saveMaterialPrices();
+      if (DATA.loaded) render();
+    });
+  }
+  $("#resetMaterialPrices")?.addEventListener("click", () => {
+    materialPrices = { ...DEFAULT_MATERIAL_PRICES };
+    saveMaterialPrices();
+    for (const [id, key] of fields) {
+      const el = $(`#${id}`);
+      if (el) el.value = String(materialPrices[key]);
+    }
+    if (DATA.loaded) render();
+  });
+}
+
+initMaterialPriceInputs();
 
 document.addEventListener("click", (e) => {
   if (!$("#serverMulti").contains(e.target)) {
@@ -978,7 +1073,7 @@ nextPageBtn.addEventListener("click", async () => {
     $("#searchBtn").disabled = false;
   }
 });
-["goldMin", "roleName", "school", "priceMin", "priceMax", "ratioMin"].forEach((id) => {
+["goldMin", "roleName", "school", "priceMin", "priceMax", "ratioMin", "petSlotMin"].forEach((id) => {
   const el = $(`#${id}`);
   el.addEventListener("keydown", (e) => {
     if (e.key === "Enter") $("#searchBtn").click();

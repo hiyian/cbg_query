@@ -81,7 +81,25 @@
           <button id="hasBaoshichui" type="button" class="chip chip-item-baoshichui" aria-pressed="false">宝石锤</button>
         </div>
       </div>
+      <div class="chip-group">
+        <span class="chip-group-label">召唤灵</span>
+        <div class="chip-list" role="group" aria-label="宠物格子">
+          <button id="petSlotGt12" type="button" class="chip chip-pet-slot" data-min="12" aria-pressed="false">格子&gt;12</button>
+        </div>
+        <label class="chip-inline-label">格子&gt;<input id="petSlotMin" type="number" placeholder="如 12" min="0" step="1"></label>
+      </div>
     </div>
+    <details class="material-prices" id="materialPricesPanel">
+      <summary>物资折算单价（本地保存，影响物资比 / 估算金币）</summary>
+      <div class="row material-prices-grid">
+        <label>神兜兜（金币）<input id="priceShendoudou" type="number" min="0" step="1000"></label>
+        <label>宝石锤（金币）<input id="priceBaoshichui" type="number" min="0" step="1000"></label>
+        <label>金柳露（金币）<input id="priceJinliulu" type="number" min="0" step="1"></label>
+        <label>神兽（金币）<input id="priceShenshou" type="number" min="0" step="100000"></label>
+        <label>物资比金柳露≥<input id="priceJinliuluMin" type="number" min="0" step="1" title="物资比中仅当金柳露数量达到该值才计入"></label>
+        <button id="resetMaterialPrices" type="button" class="link-btn">恢复默认</button>
+      </div>
+    </details>
   </section>
 
   <section class="tabs card">

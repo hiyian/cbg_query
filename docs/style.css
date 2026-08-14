@@ -332,6 +332,47 @@ body {
   background: rgba(120, 200, 255, 0.12);
 }
 
+.chip-pet-slot[aria-pressed="true"] {
+  color: #8cdc9f;
+  border-color: rgba(140, 220, 160, 0.45);
+  background: rgba(140, 220, 160, 0.12);
+}
+
+.chip-inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.chip-inline-label input {
+  width: 4.5rem;
+}
+
+.material-prices {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.material-prices summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--muted);
+  user-select: none;
+}
+
+.material-prices-grid {
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+.material-prices-grid label {
+  min-width: 10rem;
+}
+
 .key-stats {
   padding: 14px 16px;
 }

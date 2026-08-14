@@ -13,6 +13,27 @@ SHENSHOU_GOLD = 3_000_000
 SHENSHOU_LIFE = 999999
 
 
+def pet_slot_count(role: dict[str, Any]) -> int | None:
+    value = role.get("宠物格子数")
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def pet_slot_from_profile(profile: dict[str, Any]) -> int | None:
+    """从完整 profile 提取 summons.raw.iMaxBSlot。"""
+    slot = ((profile.get("summons") or {}).get("raw") or {}).get("iMaxBSlot")
+    if slot is None:
+        return None
+    try:
+        return int(slot)
+    except (TypeError, ValueError):
+        return None
+
+
 def shenshou_count(role: dict[str, Any]) -> int:
     """神兽（寿命 999999 的召唤灵）数量。优先取抓取时算好的字段。"""
     value = role.get("神兽数")
@@ -86,6 +107,9 @@ def enrich_role(role: dict[str, Any]) -> dict[str, Any]:
     items = key_item_counts(role)
     role = dict(role)
     role["_key_items"] = items
+    slots = pet_slot_count(role)
+    if slots is not None:
+        role["宠物格子数"] = slots
     role["神兽数"] = shenshou_count(role)
     role["gold_ratio"] = gold_ratio(role)
     role["material_gold"] = estimated_material_gold(role, items)

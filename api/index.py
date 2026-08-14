@@ -93,6 +93,10 @@ def list_roles(
     ratio_min: Annotated[float | None, Query(description="金币/价格下限")] = None,
     has_shendoudou: Annotated[bool, Query()] = False,
     has_baoshichui: Annotated[bool, Query()] = False,
+    pet_slot_min: Annotated[
+        int | None,
+        Query(description="宠物格子下限（严格大于该值，如 12 表示格子>12）"),
+    ] = None,
     sale_status: Annotated[
         list[str] | None,
         Query(description="上架状态：fair_show=公示期, onsale=上架中"),
@@ -131,6 +135,7 @@ def list_roles(
         ratio_min=ratio_min,
         has_shendoudou=has_shendoudou,
         has_baoshichui=has_baoshichui,
+        pet_slot_min=pet_slot_min,
         sale_statuses=sale_statuses or None,
     )
 
