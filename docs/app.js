@@ -30,7 +30,7 @@ const KEY_ITEMS = [
   { key: "shendoudou", label: "神兜兜", css: "shendoudou", sub: "" },
   { key: "baoshichui", label: "宝石锤", css: "baoshichui", sub: "" },
   { key: "jinliulu", label: "金柳露", css: "jinliulu", sub: "" },
-  { key: "jinghua", label: "精华", css: "jinghua", sub: "名称含「精华」" },
+  { key: "jinghua", label: "精华", css: "jinghua", sub: "后缀「·精华」（展示用）" },
   { key: "wuse_shi", label: "四色石", css: "wuse-shi", sub: "朱雀/青龙/白虎/玄武" },
 ];
 
@@ -41,6 +41,7 @@ const DEFAULT_MATERIAL_PRICES = {
   baoshichui: 25000,
   jinliulu: 100,
   shenshou: 3000000,
+  fabaoJinghua: 9000,
   jinliuluMinForRatio: 99,
 };
 const MATERIAL_PRICES_STORAGE_KEY = "cbg_material_prices";
@@ -71,7 +72,7 @@ function matchKeyItem(name, item) {
   if (item.key === "shendoudou") return name === "神兜兜";
   if (item.key === "baoshichui") return name.includes("宝石锤");
   if (item.key === "jinliulu") return name === "金柳露";
-  if (item.key === "jinghua") return name.includes("精华");
+  if (item.key === "jinghua") return name.endsWith("·精华");
   if (item.key === "wuse_shi") return STONE_NAMES.has(name);
   return false;
 }
@@ -137,6 +138,18 @@ function fmtRatio(role) {
   return ratio.toFixed(2);
 }
 
+function fabaoJinghuaCount(role) {
+  if (role.fabao_jinghua != null) return Number(role.fabao_jinghua) || 0;
+  let n = 0;
+  for (const eq of role.equips || []) {
+    if (eq.type !== "仓库物品") continue;
+    const name = eq.name || "";
+    if (!name.endsWith("·精华") || name.includes("礼包")) continue;
+    n += Number(eq.amount || 1);
+  }
+  return n;
+}
+
 function materialRatio(role) {
   const prices = getMaterialPrices();
   const price = Number(role.price ?? 0);
@@ -149,6 +162,7 @@ function materialRatio(role) {
     + (items.shendoudou || 0) * prices.shendoudou
     + (items.baoshichui || 0) * prices.baoshichui
     + jllPart
+    + fabaoJinghuaCount(role) * prices.fabaoJinghua
     + shenshouCount(role) * prices.shenshou;
   return value / price / 10000;
 }
@@ -167,6 +181,7 @@ function materialGold(role) {
     + (items.shendoudou || 0) * prices.shendoudou
     + (items.baoshichui || 0) * prices.baoshichui
     + (items.jinliulu || 0) * prices.jinliulu
+    + fabaoJinghuaCount(role) * prices.fabaoJinghua
     + shenshouCount(role) * prices.shenshou;
 }
 
@@ -999,6 +1014,7 @@ function initMaterialPriceInputs() {
     ["priceShendoudou", "shendoudou"],
     ["priceBaoshichui", "baoshichui"],
     ["priceJinliulu", "jinliulu"],
+    ["priceFabaoJinghua", "fabaoJinghua"],
     ["priceShenshou", "shenshou"],
     ["priceJinliuluMin", "jinliuluMinForRatio"],
   ];
