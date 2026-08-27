@@ -23,6 +23,7 @@ body {
 }
 .header h1 { margin: 0 0 6px; font-size: 1.4rem; }
 .header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.muted { color: var(--muted); }
 
 .card {
   margin: 16px 20px;
@@ -530,7 +531,36 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
 .list-summary-item.jinghua .value { color: #c8a0ff; }
 .list-summary-item.wuse-shi .value { color: #ffb464; }
 
-.roles-table { min-width: 1920px; table-layout: auto; }
+.roles-table { min-width: 2280px; table-layout: auto; }
+.roles-table td.exp { color: #9ad0ff; font-variant-numeric: tabular-nums; }
+.roles-table th.col-boost,
+.roles-table td.col-boost { min-width: 132px; }
+.boost-bars { display: flex; flex-direction: column; gap: 6px; }
+.boost-bars.detail-boost { margin-top: 8px; max-width: 360px; }
+.boost-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.boost-label { width: 2.2em; flex: 0 0 auto; }
+.boost-track {
+  flex: 1;
+  height: 7px;
+  border-radius: 99px;
+  background: #111822;
+  overflow: hidden;
+  min-width: 56px;
+}
+.boost-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #5b8def, #7ec8ff);
+}
+.boost-fill.done { background: linear-gradient(90deg, #2f9e6a, #3ecf8e); }
+.boost-pct { width: 2.4em; text-align: right; font-variant-numeric: tabular-nums; }
 .roles-table td.name { font-weight: 600; white-space: normal; word-break: break-all; }
 .roles-table th.num,
 .roles-table td.num { text-align: right; font-variant-numeric: tabular-nums; }

@@ -101,6 +101,99 @@ function officialUrl(role) {
   return `https://my.cbg.163.com/cgi/mweb/equip/${sid}/${encodeURIComponent(sn)}`;
 }
 
+const YI = 100_000_000;
+const EXP_69_TO_89 = 18.38 * YI;
+const EXP_69_TO_115 = 87.49 * YI;
+const EXP_89_TO_115 = 69.11 * YI;
+
+/** 时空区开服日（官网公告）。直升 115 仅非时空区，或开区已满 2 年的时空区服。 */
+const SHIKONG_OPEN_DATES = {
+  英雄本色: "2024-06-21",
+  传说: "2024-07-12",
+  一心一意: "2024-07-26",
+  友情岁月: "2024-08-02",
+  我们结婚吧: "2024-08-09",
+  出神入化: "2024-08-16",
+  侠客行: "2024-08-23",
+  同桌的你: "2024-08-30",
+  晚安大小姐: "2024-09-06",
+  家好月圆: "2024-09-13",
+  秋风满月: "2024-09-20",
+  华夏: "2024-09-27",
+  诗和远方: "2024-10-04",
+  佳人有约: "2024-11-01",
+  "＃２４": "2024-11-22",
+  ＃２４: "2024-11-22",
+};
+
+function currentExp(role) {
+  const n = Number(role.当前经验);
+  return Number.isFinite(n) ? n : null;
+}
+
+function totalExp(role) {
+  const n = Number(role.总经验);
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtExpYi(n) {
+  if (n == null || Number.isNaN(n)) return "-";
+  const yi = n / YI;
+  if (yi >= 100) return `${Math.round(yi).toLocaleString("zh-CN")}亿`;
+  if (yi >= 10) return `${yi.toFixed(1)}亿`;
+  return `${yi.toFixed(2)}亿`;
+}
+
+function twoYearsAgoDate() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 2);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function showBoost115(role) {
+  if ((role.area_name || "") !== "时空区") return true;
+  const opened = SHIKONG_OPEN_DATES[role.server_name];
+  if (!opened) return false;
+  return opened <= twoYearsAgoDate();
+}
+
+function boostProgress(have, need, alreadyDone) {
+  if (alreadyDone) return { pct: 1, have: have ?? 0, need, done: true };
+  if (have == null || !need) return null;
+  return { pct: Math.max(0, Math.min(1, have / need)), have, need, done: have >= need };
+}
+
+function boost89(role) {
+  const have = currentExp(role);
+  const level = Number(role.level || 0);
+  return boostProgress(have, EXP_69_TO_89, level >= 89);
+}
+
+function boost115(role) {
+  if (!showBoost115(role)) return null;
+  const have = currentExp(role);
+  const level = Number(role.level || 0);
+  if (level >= 115) return boostProgress(have, EXP_89_TO_115, true);
+  const need = level >= 89 ? EXP_89_TO_115 : EXP_69_TO_115;
+  return boostProgress(have, need, false);
+}
+
+function renderBoostBar(info, label) {
+  if (!info) return `<span class="muted">-</span>`;
+  const pct = Math.round(info.pct * 100);
+  const title = info.done
+    ? `${label} 已达`
+    : `${label} ${fmtExpYi(info.have)} / ${fmtExpYi(info.need)}（${pct}%）`;
+  return `<div class="boost-bar" title="${esc(title)}">
+    <span class="boost-label">${esc(label)}</span>
+    <span class="boost-track"><span class="boost-fill${info.done ? " done" : ""}" style="width:${pct}%"></span></span>
+    <span class="boost-pct">${info.done ? "满" : `${pct}%`}</span>
+  </div>`;
+}
+
 function goldWan(role) {
   const gold = Number(role.金币 ?? 0);
   return gold / 10000;
@@ -548,6 +641,7 @@ function showRoleDetail(role) {
     ["气血", role.气血], ["魔法", role.魔法], ["物伤", role.物伤], ["法伤", role.法伤],
     ["速度", role.速度], ["防御", role.防御], ["法防", role.法防],
     ["银币", role.银币], ["仙玉", role.仙玉],
+    ["当前经验", fmtExpYi(currentExp(role))], ["总经验", fmtExpYi(totalExp(role))],
     ["人物评分", role["人物评分"]], ["装备评分", role["装备评分"]],
     ["召唤灵评分", role["召唤灵评分"]], ["修炼评分", role.修炼评分],
     ["宠物格子", role["宠物格子数"]], ["神兽数", shenshouCount(role)],
@@ -563,6 +657,8 @@ function showRoleDetail(role) {
       <div class="price">¥${esc(role.price)}</div>
       <div class="sub">${esc(role.area_name)} · ${esc(role.server_name)} · ${esc(role.desc_sumup)}</div>
       <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 金币/价格 ${esc(fmtRatio(role))} · 物资比 ${esc(fmtMaterialRatio(role))}</div>
+      <div class="sub">当前经验 ${esc(fmtExpYi(currentExp(role)))} · 总经验 ${esc(fmtExpYi(totalExp(role)))}</div>
+      <div class="boost-bars detail-boost">${renderBoostBar(boost89(role), "直升89")}${renderBoostBar(boost115(role), "直升115")}</div>
       <div class="sub">${esc(role.ordersn)}</div>
       ${url ? `<a class="official-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">查看官方原页 ↗</a>` : ""}
     </div>
@@ -609,6 +705,7 @@ function closeRoleModal() {
 const DESC_SORT_KEYS = new Set([
   "material_ratio", "material_gold", "gold_ratio", "gold", "freeze", "price", "xianyu",
   "pet_slot", "shenshou", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi",
+  "current_exp", "total_exp", "boost89", "boost115",
 ]);
 
 const ROLE_SORT_KEYS = {
@@ -627,6 +724,10 @@ const ROLE_SORT_KEYS = {
   jinliulu: (role) => keyItemCount(role, "jinliulu"),
   jinghua: (role) => keyItemCount(role, "jinghua"),
   wuse_shi: (role) => keyItemCount(role, "wuse_shi"),
+  current_exp: (role) => currentExp(role) ?? -1,
+  total_exp: (role) => totalExp(role) ?? -1,
+  boost89: (role) => boost89(role)?.pct ?? -1,
+  boost115: (role) => boost115(role)?.pct ?? -1,
 };
 
 function sortRoles(roles) {
@@ -666,6 +767,10 @@ function renderRoles(roles) {
       <th>角色</th>
       <th>门派</th>
       <th class="num sortable" data-sort="level">${sortHeaderHtml("等级", "level")}</th>
+      <th class="num sortable" data-sort="current_exp">${sortHeaderHtml("当前经验", "current_exp")}</th>
+      <th class="num sortable" data-sort="total_exp">${sortHeaderHtml("总经验", "total_exp")}</th>
+      <th class="col-boost sortable" data-sort="boost89">${sortHeaderHtml("直升89", "boost89")}</th>
+      <th class="col-boost sortable" data-sort="boost115">${sortHeaderHtml("直升115", "boost115")}</th>
       <th class="num sortable" data-sort="price">${sortHeaderHtml("价格", "price")}</th>
       <th>状态</th>
       <th>时间</th>
@@ -693,6 +798,10 @@ function renderRoles(roles) {
         <td class="name">${esc(r.role_name)}</td>
         <td>${esc(r.school)}</td>
         <td class="num">${esc(r.level ?? "-")}</td>
+        <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
+        <td class="num exp">${esc(fmtExpYi(totalExp(r)))}</td>
+        <td class="col-boost">${renderBoostBar(boost89(r), "89")}</td>
+        <td class="col-boost">${renderBoostBar(boost115(r), "115")}</td>
         <td class="num price">¥${esc(r.price)}</td>
         <td><span class="sale-tag ${esc(r.sale_status || "unknown")}">${esc(fmtSaleStatus(r))}</span></td>
         <td class="sale-time">${esc(fmtSaleTime(r))}</td>

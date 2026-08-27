@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from .key_items import count_fabao_essence_from_equips, count_key_items_from_equips
@@ -116,6 +117,72 @@ def material_ratio(role: dict[str, Any], items: dict[str, int] | None = None) ->
     if not price:
         return None
     return material_value(role, items) / price / 10_000
+
+
+YI = 100_000_000
+EXP_69_TO_89 = 18.38 * YI
+EXP_69_TO_115 = 87.49 * YI
+EXP_89_TO_115 = 69.11 * YI
+
+SHIKONG_OPEN_DATES = {
+    "英雄本色": "2024-06-21",
+    "传说": "2024-07-12",
+    "一心一意": "2024-07-26",
+    "友情岁月": "2024-08-02",
+    "我们结婚吧": "2024-08-09",
+    "出神入化": "2024-08-16",
+    "侠客行": "2024-08-23",
+    "同桌的你": "2024-08-30",
+    "晚安大小姐": "2024-09-06",
+    "家好月圆": "2024-09-13",
+    "秋风满月": "2024-09-20",
+    "华夏": "2024-09-27",
+    "诗和远方": "2024-10-04",
+    "佳人有约": "2024-11-01",
+    "＃２４": "2024-11-22",
+}
+
+
+def current_exp(role: dict[str, Any]) -> float | None:
+    value = role.get("当前经验")
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def show_boost_115(role: dict[str, Any], *, today: str | None = None) -> bool:
+    if (role.get("area_name") or "") != "时空区":
+        return True
+    opened = SHIKONG_OPEN_DATES.get(role.get("server_name") or "")
+    if not opened:
+        return False
+    if today is None:
+        today = datetime.now().date().isoformat()
+    cutoff_y, cutoff_m, cutoff_d = (int(x) for x in today.split("-"))
+    cutoff_y -= 2
+    cutoff = f"{cutoff_y:04d}-{cutoff_m:02d}-{cutoff_d:02d}"
+    return opened <= cutoff
+
+
+def boost_89_pct(role: dict[str, Any]) -> float:
+    have = current_exp(role) or 0
+    if float(role.get("level") or 0) >= 89:
+        return 1.0
+    return min(1.0, have / EXP_69_TO_89) if EXP_69_TO_89 else 0.0
+
+
+def boost_115_pct(role: dict[str, Any]) -> float:
+    if not show_boost_115(role):
+        return -1.0
+    have = current_exp(role) or 0
+    level = float(role.get("level") or 0)
+    if level >= 115:
+        return 1.0
+    need = EXP_89_TO_115 if level >= 89 else EXP_69_TO_115
+    return min(1.0, have / need) if need else 0.0
 
 
 def enrich_role(role: dict[str, Any]) -> dict[str, Any]:

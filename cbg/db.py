@@ -16,6 +16,9 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from .role_metrics import (
+    boost_115_pct,
+    boost_89_pct,
+    current_exp,
     enrich_role,
     estimated_material_gold,
     gold_ratio,
@@ -339,6 +342,14 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
             return float(role.get("level") or 0)
         if sort == "xianyu":
             return float(role.get("仙玉") or 0)
+        if sort == "current_exp":
+            return current_exp(role) or 0.0
+        if sort == "total_exp":
+            return float(role.get("总经验") or 0)
+        if sort == "boost89":
+            return boost_89_pct(role)
+        if sort == "boost115":
+            return boost_115_pct(role)
         if sort == "pet_slot":
             value = pet_slot_count(role)
             return float(value) if value is not None else -1.0

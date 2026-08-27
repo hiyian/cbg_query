@@ -42,6 +42,10 @@ SORT_FIELDS = {
     "jinliulu",
     "jinghua",
     "wuse_shi",
+    "current_exp",
+    "total_exp",
+    "boost89",
+    "boost115",
 }
 
 APP_ID = os.environ.get("APP_ID", "xunmi").strip()
@@ -214,6 +218,7 @@ def admin_create_keys(payload: Annotated[dict[str, Any], Body(...)]) -> dict:
             minutes=payload.get("minutes"),
             note=str(payload.get("note") or ""),
             created_by=str(payload.get("created_by") or "admin"),
+            openid=str(payload.get("openid") or ""),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -227,6 +232,24 @@ def admin_list_keys(
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> dict:
     return {"keys": license_store.list_keys(kind=kind, status=status, limit=limit)}
+
+
+@app.post("/api/admin/keys/{key_id}/expires", dependencies=[Depends(_require_admin)])
+def admin_update_expires(key_id: int, payload: Annotated[dict[str, Any], Body()]) -> dict:
+    try:
+        return {
+            "key": license_store.update_expires(
+                key_id,
+                expires_at=payload.get("expires_at"),
+                days=payload.get("days"),
+                hours=payload.get("hours"),
+                minutes=payload.get("minutes"),
+            )
+        }
+    except KeyError:
+        raise HTTPException(status_code=404, detail="卡密不存在") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/admin/keys/{key_id}/revoke", dependencies=[Depends(_require_admin)])
