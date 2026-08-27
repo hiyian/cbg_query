@@ -1,4 +1,4 @@
-let META = { areas: [], schools: [], servers: [] };
+let META = { areas: [], schools: [], servers: [], tasks: [] };
 let DATA = {
   roles: [],
   loaded: false,
@@ -7,10 +7,13 @@ let DATA = {
   total: 0,
   totalPages: 1,
   serverKeys: [],
+  taskKeys: [],
+  batch: "",
   metaText: "",
 };
 let roleSort = { key: "material_ratio", dir: "desc" };
 let selectedServerKeys = new Set();
+let selectedTaskKeys = new Set();
 
 const $ = (sel) => document.querySelector(sel);
 const meta = $("#meta");
@@ -136,6 +139,13 @@ function totalExp(role) {
   return Number.isFinite(n) ? n : null;
 }
 
+function usableExp(role) {
+  const total = totalExp(role);
+  const current = currentExp(role);
+  if (total == null || current == null) return null;
+  return Math.max(0, total - current);
+}
+
 function fmtExpYi(n) {
   if (n == null || Number.isNaN(n)) return "-";
   const yi = n / YI;
@@ -167,14 +177,14 @@ function boostProgress(have, need, alreadyDone) {
 }
 
 function boost89(role) {
-  const have = currentExp(role);
+  const have = usableExp(role);
   const level = Number(role.level || 0);
   return boostProgress(have, EXP_69_TO_89, level >= 89);
 }
 
 function boost115(role) {
   if (!showBoost115(role)) return null;
-  const have = currentExp(role);
+  const have = usableExp(role);
   const level = Number(role.level || 0);
   if (level >= 115) return boostProgress(have, EXP_89_TO_115, true);
   const need = level >= 89 ? EXP_89_TO_115 : EXP_69_TO_115;
@@ -510,9 +520,112 @@ function getPetSlotMinFilter() {
   return null;
 }
 
+function getSelectedTaskKeys() {
+  return [...selectedTaskKeys];
+}
+
+function updateTaskMultiLabel() {
+  const label = $("#taskMultiLabel");
+  if (!label) return;
+  const keys = getSelectedTaskKeys();
+  if (!keys.length) {
+    label.textContent = "全部任务";
+    return;
+  }
+  const names = keys.map(
+    (key) => (META.tasks || []).find((t) => t.key === key)?.label || key,
+  );
+  if (names.length <= 2) {
+    label.textContent = names.join("、");
+    return;
+  }
+  label.textContent = `${names.slice(0, 2).join("、")} 等 ${names.length} 个`;
+}
+
+function setTaskMultiOpen(open) {
+  const panel = $("#taskMultiPanel");
+  const trigger = $("#taskMultiTrigger");
+  if (!panel || !trigger) return;
+  panel.hidden = !open;
+  trigger.setAttribute("aria-expanded", open ? "true" : "false");
+  $("#taskMulti")?.classList.toggle("open", open);
+}
+
+function fillTaskOptions() {
+  const el = $("#taskList");
+  if (!el) return;
+  const list = [...(META.tasks || [])].sort((a, b) =>
+    String(a.label || a.key).localeCompare(String(b.label || b.key), "zh-CN"),
+  );
+  if (!list.length) {
+    el.innerHTML = '<span class="empty-hint">暂无任务标记</span>';
+    updateTaskMultiLabel();
+    fillBatchOptions();
+    return;
+  }
+  el.innerHTML = list.map((t) => {
+    const active = selectedTaskKeys.has(t.key);
+    const count = t.count != null ? ` · ${t.count}` : "";
+    return `<button
+      type="button"
+      class="multiselect-option${active ? " selected" : ""}"
+      data-key="${esc(t.key)}"
+      role="option"
+      aria-selected="${active ? "true" : "false"}"
+    >
+      <span class="option-main">
+        <span>${esc(t.label || t.key)}</span>
+        <span class="option-sub">${esc(t.key)}${esc(count)}</span>
+      </span>
+      <span class="multiselect-check" aria-hidden="true">✓</span>
+    </button>`;
+  }).join("");
+  updateTaskMultiLabel();
+  fillBatchOptions();
+}
+
+function fillBatchOptions() {
+  const el = $("#batch");
+  if (!el) return;
+  const current = el.value;
+  const source = selectedTaskKeys.size
+    ? (META.tasks || []).filter((t) => selectedTaskKeys.has(t.key))
+    : (META.tasks || []);
+  const batches = [];
+  const seen = new Set();
+  for (const task of source) {
+    for (const batch of task.batches || []) {
+      if (!batch.key || seen.has(batch.key)) continue;
+      seen.add(batch.key);
+      batches.push({
+        key: batch.key,
+        label: selectedTaskKeys.size === 1
+          ? batch.key
+          : `${task.label || task.key} · ${batch.key}`,
+        count: batch.count,
+      });
+    }
+  }
+  el.innerHTML = `<option value="">全部批次</option>${batches.map((b) =>
+    `<option value="${esc(b.key)}">${esc(b.label)}${b.count != null ? `（${b.count}）` : ""}</option>`
+  ).join("")}`;
+  if ([...el.options].some((opt) => opt.value === current)) el.value = current;
+}
+
+function fmtCrawlTasks(role) {
+  const tags = Array.isArray(role.crawl_tags) ? role.crawl_tags : [];
+  const labels = [...new Set(tags.map((t) => t.task_label || t.task).filter(Boolean))];
+  if (!labels.length) return '<span class="muted">-</span>';
+  return `<span class="task-tags">${labels.map((label) =>
+    `<span class="task-tag">${esc(label)}</span>`
+  ).join("")}</span>`;
+}
+
 function getFilters() {
   return {
     serverKeys: getSelectedServerKeys(),
+    taskKeys: getSelectedTaskKeys(),
+    batch: $("#batch")?.value || "",
     saleStatuses: getSelectedSaleStatuses(),
     goldMin: $("#goldMin").value ? Number($("#goldMin").value) : null,
     roleName: $("#roleName").value.trim(),
@@ -642,6 +755,7 @@ function showRoleDetail(role) {
     ["速度", role.速度], ["防御", role.防御], ["法防", role.法防],
     ["银币", role.银币], ["仙玉", role.仙玉],
     ["当前经验", fmtExpYi(currentExp(role))], ["总经验", fmtExpYi(totalExp(role))],
+    ["可使用经验", fmtExpYi(usableExp(role))],
     ["人物评分", role["人物评分"]], ["装备评分", role["装备评分"]],
     ["召唤灵评分", role["召唤灵评分"]], ["修炼评分", role.修炼评分],
     ["宠物格子", role["宠物格子数"]], ["神兽数", shenshouCount(role)],
@@ -657,7 +771,7 @@ function showRoleDetail(role) {
       <div class="price">¥${esc(role.price)}</div>
       <div class="sub">${esc(role.area_name)} · ${esc(role.server_name)} · ${esc(role.desc_sumup)}</div>
       <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 金币/价格 ${esc(fmtRatio(role))} · 物资比 ${esc(fmtMaterialRatio(role))}</div>
-      <div class="sub">当前经验 ${esc(fmtExpYi(currentExp(role)))} · 总经验 ${esc(fmtExpYi(totalExp(role)))}</div>
+      <div class="sub">当前经验 ${esc(fmtExpYi(currentExp(role)))} · 总经验 ${esc(fmtExpYi(totalExp(role)))} · 可使用 ${esc(fmtExpYi(usableExp(role)))}</div>
       <div class="boost-bars detail-boost">${renderBoostBar(boost89(role), "直升89")}${renderBoostBar(boost115(role), "直升115")}</div>
       <div class="sub">${esc(role.ordersn)}</div>
       ${url ? `<a class="official-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">查看官方原页 ↗</a>` : ""}
@@ -705,7 +819,7 @@ function closeRoleModal() {
 const DESC_SORT_KEYS = new Set([
   "material_ratio", "material_gold", "gold_ratio", "gold", "freeze", "price", "xianyu",
   "pet_slot", "shenshou", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi",
-  "current_exp", "total_exp", "boost89", "boost115",
+  "current_exp", "total_exp", "usable_exp", "boost89", "boost115",
 ]);
 
 const ROLE_SORT_KEYS = {
@@ -726,6 +840,7 @@ const ROLE_SORT_KEYS = {
   wuse_shi: (role) => keyItemCount(role, "wuse_shi"),
   current_exp: (role) => currentExp(role) ?? -1,
   total_exp: (role) => totalExp(role) ?? -1,
+  usable_exp: (role) => usableExp(role) ?? -1,
   boost89: (role) => boost89(role)?.pct ?? -1,
   boost115: (role) => boost115(role)?.pct ?? -1,
 };
@@ -764,11 +879,13 @@ function renderRoles(roles) {
     <thead><tr>
       <th>大区</th>
       <th>服务器</th>
+      <th>任务</th>
       <th>角色</th>
       <th>门派</th>
       <th class="num sortable" data-sort="level">${sortHeaderHtml("等级", "level")}</th>
       <th class="num sortable" data-sort="current_exp">${sortHeaderHtml("当前经验", "current_exp")}</th>
       <th class="num sortable" data-sort="total_exp">${sortHeaderHtml("总经验", "total_exp")}</th>
+      <th class="num sortable" data-sort="usable_exp">${sortHeaderHtml("可使用经验", "usable_exp")}</th>
       <th class="col-boost sortable" data-sort="boost89">${sortHeaderHtml("直升89", "boost89")}</th>
       <th class="col-boost sortable" data-sort="boost115">${sortHeaderHtml("直升115", "boost115")}</th>
       <th class="num sortable" data-sort="price">${sortHeaderHtml("价格", "price")}</th>
@@ -795,11 +912,13 @@ function renderRoles(roles) {
       <tr class="role-row" data-role-key="${esc(roleKey(r))}" tabindex="0" title="点击查看明细">
         <td>${esc(r.area_name)}</td>
         <td>${esc(r.server_name)}</td>
+        <td class="task-cell">${fmtCrawlTasks(r)}</td>
         <td class="name">${esc(r.role_name)}</td>
         <td>${esc(r.school)}</td>
         <td class="num">${esc(r.level ?? "-")}</td>
         <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
         <td class="num exp">${esc(fmtExpYi(totalExp(r)))}</td>
+        <td class="num exp">${esc(fmtExpYi(usableExp(r)))}</td>
         <td class="col-boost">${renderBoostBar(boost89(r), "89")}</td>
         <td class="col-boost">${renderBoostBar(boost115(r), "115")}</td>
         <td class="num price">¥${esc(r.price)}</td>
@@ -880,7 +999,7 @@ function render() {
 }
 
 function renderPagination() {
-  if (!DATA.loaded || !DATA.serverKeys.length) {
+  if (!DATA.loaded) {
     paginationBar.hidden = true;
     return;
   }
@@ -937,6 +1056,7 @@ function buildFilterOptions() {
   fillSelect("area", META.areas);
   fillServerOptions($("#area").value);
   fillSelect("school", META.schools);
+  fillTaskOptions();
 }
 
 function apiBase() {
@@ -963,8 +1083,8 @@ async function loadMeta() {
 
 async function fetchRoles(page = DATA.page) {
   const f = getFilters();
-  if (!f.serverKeys.length) {
-    throw new Error("请至少选择一个服务器");
+  if (!f.serverKeys.length && !f.taskKeys.length && !f.batch) {
+    throw new Error("请选择服务器或任务");
   }
 
   const params = new URLSearchParams({
@@ -976,6 +1096,10 @@ async function fetchRoles(page = DATA.page) {
   for (const key of f.serverKeys) {
     params.append("server_key", key);
   }
+  for (const key of f.taskKeys) {
+    params.append("task_key", key);
+  }
+  if (f.batch) params.set("batch", f.batch);
   if (f.goldMin != null) params.set("gold_min", String(f.goldMin));
   if (f.roleName) params.set("role_name", f.roleName);
   if (f.school) params.set("school", f.school);
@@ -1008,11 +1132,20 @@ async function fetchRoles(page = DATA.page) {
   DATA.total = record.total || 0;
   DATA.totalPages = record.total_pages || 1;
   DATA.serverKeys = f.serverKeys;
+  DATA.taskKeys = f.taskKeys;
+  DATA.batch = f.batch;
   DATA.loaded = true;
   const names = f.serverKeys.map(
     (key) => META.servers.find((s) => s.key === key)?.server_name || key,
   );
-  DATA.metaText = `${names.join("、")} · 共 ${DATA.total} 条 · 更新于 ${record.updated_at || "-"}`;
+  const taskNames = f.taskKeys.map(
+    (key) => (META.tasks || []).find((t) => t.key === key)?.label || key,
+  );
+  const parts = [];
+  if (names.length) parts.push(names.join("、"));
+  if (taskNames.length) parts.push(taskNames.join("、"));
+  if (f.batch) parts.push(f.batch);
+  DATA.metaText = `${parts.join(" · ") || "全部"} · 共 ${DATA.total} 条 · 更新于 ${record.updated_at || "-"}`;
 }
 
 document.querySelectorAll(".tab").forEach((btn) => {
@@ -1064,6 +1197,7 @@ $("#serverSearch").addEventListener("keydown", (e) => {
 
 $("#serverMultiTrigger").addEventListener("click", () => {
   setServerMultiOpen($("#serverMultiPanel").hidden);
+  setTaskMultiOpen(false);
 });
 
 $("#serverList").addEventListener("click", (e) => {
@@ -1155,14 +1289,54 @@ function initMaterialPriceInputs() {
 
 initMaterialPriceInputs();
 
+$("#taskMultiTrigger")?.addEventListener("click", () => {
+  setTaskMultiOpen($("#taskMultiPanel").hidden);
+  setServerMultiOpen(false);
+});
+
+$("#taskList")?.addEventListener("click", (e) => {
+  const option = e.target.closest(".multiselect-option");
+  if (!option) return;
+  const key = option.dataset.key;
+  if (selectedTaskKeys.has(key)) {
+    selectedTaskKeys.delete(key);
+    option.classList.remove("selected");
+    option.setAttribute("aria-selected", "false");
+  } else {
+    selectedTaskKeys.add(key);
+    option.classList.add("selected");
+    option.setAttribute("aria-selected", "true");
+  }
+  updateTaskMultiLabel();
+  fillBatchOptions();
+});
+
+$("#selectAllTasks")?.addEventListener("click", () => {
+  (META.tasks || []).forEach((t) => selectedTaskKeys.add(t.key));
+  fillTaskOptions();
+});
+
+$("#clearTasks")?.addEventListener("click", () => {
+  selectedTaskKeys.clear();
+  fillTaskOptions();
+});
+
 document.addEventListener("click", (e) => {
-  if (!$("#serverMulti").contains(e.target)) {
+  if (!$("#serverMulti")?.contains(e.target)) {
     setServerMultiOpen(false);
+  }
+  if (!$("#taskMulti")?.contains(e.target)) {
+    setTaskMultiOpen(false);
   }
 });
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  if ($("#taskMultiPanel") && !$("#taskMultiPanel").hidden) {
+    setTaskMultiOpen(false);
+    $("#taskMultiTrigger")?.focus();
+    return;
+  }
   if (!$("#serverMultiPanel").hidden) {
     setServerMultiOpen(false);
     $("#serverMultiTrigger").focus();
@@ -1171,9 +1345,9 @@ document.addEventListener("keydown", (e) => {
   if (!roleModal.hidden) closeRoleModal();
 });
 
-rolesPanel.innerHTML = '<div class="empty">请至少选择一个服务器后点击「查询」</div>';
-detailsPanel.innerHTML = '<div class="empty">请至少选择一个服务器后点击「查询」</div>';
-petsPanel.innerHTML = '<div class="empty">请至少选择一个服务器后点击「查询」</div>';
+rolesPanel.innerHTML = '<div class="empty">请选择服务器或任务后点击「查询」</div>';
+detailsPanel.innerHTML = '<div class="empty">请选择服务器或任务后点击「查询」</div>';
+petsPanel.innerHTML = '<div class="empty">请选择服务器或任务后点击「查询」</div>';
 
 prevPageBtn.addEventListener("click", async () => {
   if (DATA.page <= 1) return;

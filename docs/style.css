@@ -263,6 +263,23 @@ body {
   background: linear-gradient(135deg, #ffd76a, #f5b942);
 }
 
+.task-cell { min-width: 88px; }
+.task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.task-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: #c5d8ff;
+  background: rgba(91, 141, 239, 0.2);
+  border: 1px solid rgba(91, 141, 239, 0.28);
+}
+
 .filter-chips-row {
   margin-top: 14px;
   padding-top: 14px;

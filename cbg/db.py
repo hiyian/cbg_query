@@ -19,6 +19,7 @@ from .role_metrics import (
     boost_115_pct,
     boost_89_pct,
     current_exp,
+    usable_exp,
     enrich_role,
     estimated_material_gold,
     gold_ratio,
@@ -238,10 +239,12 @@ def fetch_meta() -> dict[str, Any]:
                 """
             )
             schools = [row["school"] for row in cur.fetchall()]
+        tasks = _fetch_tasks(conn)
     areas = sorted({s["area_name"] for s in servers if s.get("area_name")})
     return {
         "areas": areas,
         "schools": schools,
+        "tasks": tasks,
         "servers": [
             _attach_server_pinyin(
                 {
@@ -254,6 +257,45 @@ def fetch_meta() -> dict[str, Any]:
             for s in servers
         ],
     }
+
+
+def _fetch_tasks(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+              tag->>'task' AS task_key,
+              MAX(COALESCE(NULLIF(tag->>'task_label', ''), tag->>'task')) AS task_label,
+              tag->>'batch' AS batch_key,
+              MAX(tag->>'at') AS batch_at,
+              COUNT(*) AS cnt
+            FROM roles r
+            CROSS JOIN LATERAL jsonb_array_elements(r.payload->'crawl_tags') AS tag
+            WHERE jsonb_typeof(r.payload->'crawl_tags') = 'array'
+              AND COALESCE(tag->>'task', '') != ''
+            GROUP BY tag->>'task', tag->>'batch'
+            ORDER BY task_label, batch_at DESC NULLS LAST
+            """
+        )
+        rows = cur.fetchall()
+    grouped: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = row["task_key"]
+        item = grouped.setdefault(
+            key,
+            {"key": key, "label": row["task_label"] or key, "count": 0, "batches": []},
+        )
+        item["label"] = row["task_label"] or item["label"]
+        item["count"] += int(row["cnt"])
+        if row["batch_key"]:
+            item["batches"].append(
+                {
+                    "key": row["batch_key"],
+                    "at": row["batch_at"],
+                    "count": int(row["cnt"]),
+                }
+            )
+    return list(grouped.values())
 
 
 def _row_to_role(row: dict[str, Any]) -> dict[str, Any]:
@@ -346,6 +388,8 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
             return current_exp(role) or 0.0
         if sort == "total_exp":
             return float(role.get("总经验") or 0)
+        if sort == "usable_exp":
+            return usable_exp(role) or 0.0
         if sort == "boost89":
             return boost_89_pct(role)
         if sort == "boost115":
@@ -366,9 +410,21 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
     )
 
 
+def _crawl_tag_contains(*items: dict[str, str]) -> tuple[str, list[Any]]:
+    """用 GIN 可加速的 @> 过滤 crawl_tags。每个条件是要同时命中的字段。"""
+    clauses = []
+    params: list[Any] = []
+    for item in items:
+        clauses.append("r.payload->'crawl_tags' @> %s")
+        params.append(Jsonb([item]))
+    return "(" + " OR ".join(clauses) + ")", params
+
+
 def query_roles(
     *,
-    server_keys: list[str],
+    server_keys: list[str] | None = None,
+    task_keys: list[str] | None = None,
+    batch_key: str | None = None,
     page: int = 1,
     page_size: int = 50,
     sort: str = "material_ratio",
@@ -384,14 +440,31 @@ def query_roles(
     pet_slot_min: int | None = None,
     sale_statuses: list[str] | None = None,
 ) -> dict[str, Any]:
-    if not server_keys:
-        raise ValueError("server_keys 不能为空")
+    server_keys = [key for key in (server_keys or []) if key]
+    task_keys = [key for key in (task_keys or []) if key]
+    batch_key = (batch_key or "").strip() or None
+    if not server_keys and not task_keys and not batch_key:
+        raise ValueError("请至少选择服务器或任务")
 
     page = max(page, 1)
     page_size = max(min(page_size, 200), 1)
-    placeholders = ", ".join(["%s"] * len(server_keys))
-    conditions = [f"s.server_key IN ({placeholders})"]
-    params: list[Any] = list(server_keys)
+    conditions: list[str] = []
+    params: list[Any] = []
+    if server_keys:
+        placeholders = ", ".join(["%s"] * len(server_keys))
+        conditions.append(f"s.server_key IN ({placeholders})")
+        params.extend(server_keys)
+    if task_keys or batch_key:
+        tag_filters: list[dict[str, str]] = []
+        if task_keys and batch_key:
+            tag_filters.extend({"task": key, "batch": batch_key} for key in task_keys)
+        elif task_keys:
+            tag_filters.extend({"task": key} for key in task_keys)
+        else:
+            tag_filters.append({"batch": batch_key})
+        clause, tag_params = _crawl_tag_contains(*tag_filters)
+        conditions.append(clause)
+        params.extend(tag_params)
 
     if role_name:
         conditions.append("r.role_name ILIKE %s")
@@ -475,6 +548,8 @@ def query_roles(
     return {
         "updated_at": updated_at,
         "server_keys": server_keys,
+        "task_keys": task_keys,
+        "batch": batch_key,
         "total": total,
         "page": page,
         "page_size": page_size,

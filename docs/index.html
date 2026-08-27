@@ -9,7 +9,7 @@
 </head>
 <body>
   <header class="header">
-    <p id="meta">请至少选择一个服务器后点击「查询」</p>
+    <p id="meta">请选择服务器或任务后点击「查询」</p>
   </header>
 
   <section class="filters card">
@@ -52,6 +52,34 @@
             <div id="serverList" class="multiselect-options" role="listbox" aria-multiselectable="true"></div>
           </div>
         </div>
+      </label>
+      <label class="server-filter">
+        任务
+        <div id="taskMulti" class="multiselect">
+          <button
+            id="taskMultiTrigger"
+            type="button"
+            class="multiselect-trigger"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="taskList"
+          >
+            <span id="taskMultiLabel" class="multiselect-label">全部任务</span>
+            <span class="multiselect-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="taskMultiPanel" class="multiselect-panel" hidden>
+            <div class="multiselect-toolbar">
+              <button id="selectAllTasks" type="button" class="link-btn">全选</button>
+              <button id="clearTasks" type="button" class="link-btn">清空</button>
+            </div>
+            <div id="taskList" class="multiselect-options" role="listbox" aria-multiselectable="true"></div>
+          </div>
+        </div>
+      </label>
+      <label>批次
+        <select id="batch">
+          <option value="">全部批次</option>
+        </select>
       </label>
       <label>金币（万）≥<input id="goldMin" type="number" placeholder="如 100" step="1"></label>
       <label>角色<input id="roleName" type="search" placeholder="角色名"></label>

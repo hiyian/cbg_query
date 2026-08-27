@@ -36,6 +36,7 @@ CREATE INDEX IF NOT EXISTS idx_roles_price ON roles (price);
 CREATE INDEX IF NOT EXISTS idx_roles_gold ON roles (gold);
 CREATE INDEX IF NOT EXISTS idx_roles_sale_status ON roles (sale_status);
 CREATE INDEX IF NOT EXISTS idx_roles_server_id ON roles (server_id);
+CREATE INDEX IF NOT EXISTS idx_roles_crawl_tags ON roles USING GIN ((payload -> 'crawl_tags'));
 
 -- ---------------- 寻觅助手：卡密 / 机器码 / 埋点 / 反馈 ----------------
 
@@ -50,13 +51,15 @@ CREATE TABLE IF NOT EXISTS license_keys (
   note TEXT NOT NULL DEFAULT '',
   session_token VARCHAR(64),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_by VARCHAR(64) NOT NULL DEFAULT 'admin'
+  created_by VARCHAR(64) NOT NULL DEFAULT 'admin',
+  openid VARCHAR(64) NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_license_keys_kind ON license_keys (kind);
 CREATE INDEX IF NOT EXISTS idx_license_keys_status ON license_keys (status);
 CREATE INDEX IF NOT EXISTS idx_license_keys_expires ON license_keys (expires_at);
 CREATE INDEX IF NOT EXISTS idx_license_keys_session ON license_keys (session_token);
+CREATE INDEX IF NOT EXISTS idx_license_keys_openid ON license_keys (openid);
 
 CREATE TABLE IF NOT EXISTS license_machines (
   id SERIAL PRIMARY KEY,

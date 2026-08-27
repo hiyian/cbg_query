@@ -44,6 +44,7 @@ SORT_FIELDS = {
     "wuse_shi",
     "current_exp",
     "total_exp",
+    "usable_exp",
     "boost89",
     "boost115",
 }
@@ -85,6 +86,14 @@ def list_roles(
         list[str] | None,
         Query(description="服务器 key，可重复传参多选"),
     ] = None,
+    task_key: Annotated[
+        list[str] | None,
+        Query(description="抓取任务 key，可重复传参多选"),
+    ] = None,
+    batch: Annotated[
+        str | None,
+        Query(description="抓取批次 key"),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=200)] = 50,
     sort: Annotated[str, Query(description="排序字段")] = "material_ratio",
@@ -111,10 +120,12 @@ def list_roles(
     ] = False,
 ) -> dict:
     server_keys = [key.strip() for key in (server_key or []) if key and key.strip()]
-    if not server_keys:
+    task_keys = [key.strip() for key in (task_key or []) if key and key.strip()]
+    batch_key = (batch or "").strip() or None
+    if not server_keys and not task_keys and not batch_key:
         if legacy_all:
             return fetch_roles(server_key=None)
-        raise HTTPException(status_code=400, detail="请至少选择一个服务器（server_key）")
+        raise HTTPException(status_code=400, detail="请至少选择一个服务器或任务")
 
     if sort not in SORT_FIELDS:
         raise HTTPException(status_code=400, detail=f"不支持的排序字段: {sort}")
@@ -127,6 +138,8 @@ def list_roles(
 
     return query_roles(
         server_keys=server_keys,
+        task_keys=task_keys,
+        batch_key=batch_key,
         page=page,
         page_size=page_size,
         sort=sort,

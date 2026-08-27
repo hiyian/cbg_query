@@ -153,6 +153,24 @@ def current_exp(role: dict[str, Any]) -> float | None:
         return None
 
 
+def total_exp(role: dict[str, Any]) -> float | None:
+    value = role.get("总经验")
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def usable_exp(role: dict[str, Any]) -> float | None:
+    total = total_exp(role)
+    current = current_exp(role)
+    if total is None or current is None:
+        return None
+    return max(0.0, total - current)
+
+
 def show_boost_115(role: dict[str, Any], *, today: str | None = None) -> bool:
     if (role.get("area_name") or "") != "时空区":
         return True
@@ -168,7 +186,7 @@ def show_boost_115(role: dict[str, Any], *, today: str | None = None) -> bool:
 
 
 def boost_89_pct(role: dict[str, Any]) -> float:
-    have = current_exp(role) or 0
+    have = usable_exp(role) or 0
     if float(role.get("level") or 0) >= 89:
         return 1.0
     return min(1.0, have / EXP_69_TO_89) if EXP_69_TO_89 else 0.0
@@ -177,7 +195,7 @@ def boost_89_pct(role: dict[str, Any]) -> float:
 def boost_115_pct(role: dict[str, Any]) -> float:
     if not show_boost_115(role):
         return -1.0
-    have = current_exp(role) or 0
+    have = usable_exp(role) or 0
     level = float(role.get("level") or 0)
     if level >= 115:
         return 1.0
