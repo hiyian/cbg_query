@@ -266,36 +266,23 @@ def _fetch_tasks(conn: psycopg.Connection) -> list[dict[str, Any]]:
             SELECT
               tag->>'task' AS task_key,
               MAX(COALESCE(NULLIF(tag->>'task_label', ''), tag->>'task')) AS task_label,
-              tag->>'batch' AS batch_key,
-              MAX(tag->>'at') AS batch_at,
               COUNT(*) AS cnt
             FROM roles r
             CROSS JOIN LATERAL jsonb_array_elements(r.payload->'crawl_tags') AS tag
             WHERE jsonb_typeof(r.payload->'crawl_tags') = 'array'
               AND COALESCE(tag->>'task', '') != ''
-            GROUP BY tag->>'task', tag->>'batch'
-            ORDER BY task_label, batch_at DESC NULLS LAST
+            GROUP BY tag->>'task'
+            ORDER BY task_label
             """
         )
-        rows = cur.fetchall()
-    grouped: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        key = row["task_key"]
-        item = grouped.setdefault(
-            key,
-            {"key": key, "label": row["task_label"] or key, "count": 0, "batches": []},
-        )
-        item["label"] = row["task_label"] or item["label"]
-        item["count"] += int(row["cnt"])
-        if row["batch_key"]:
-            item["batches"].append(
-                {
-                    "key": row["batch_key"],
-                    "at": row["batch_at"],
-                    "count": int(row["cnt"]),
-                }
-            )
-    return list(grouped.values())
+        return [
+            {
+                "key": row["task_key"],
+                "label": row["task_label"] or row["task_key"],
+                "count": int(row["cnt"]),
+            }
+            for row in cur.fetchall()
+        ]
 
 
 def _row_to_role(row: dict[str, Any]) -> dict[str, Any]:

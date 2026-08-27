@@ -89,7 +89,7 @@ cd docs && python3 -m http.server 8080
 |------|------|
 | `GET /api/health` | 健康检查 |
 | `GET /api/meta` | 大区 / 门派 / 服务器 / 任务与批次 |
-| `GET /api/roles?server_key=xxx&task_key=yyy&batch=zzz` | 分页查询角色（服务器或任务至少选一个） |
+| `GET /api/roles?server_key=xxx&task_key=yyy` | 分页查询角色（服务器或任务至少选一个） |
 
 ## 环境变量
 

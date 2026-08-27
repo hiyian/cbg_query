@@ -8,7 +8,6 @@ let DATA = {
   totalPages: 1,
   serverKeys: [],
   taskKeys: [],
-  batch: "",
   metaText: "",
 };
 let roleSort = { key: "material_ratio", dir: "desc" };
@@ -559,7 +558,6 @@ function fillTaskOptions() {
   if (!list.length) {
     el.innerHTML = '<span class="empty-hint">暂无任务标记</span>';
     updateTaskMultiLabel();
-    fillBatchOptions();
     return;
   }
   el.innerHTML = list.map((t) => {
@@ -580,35 +578,6 @@ function fillTaskOptions() {
     </button>`;
   }).join("");
   updateTaskMultiLabel();
-  fillBatchOptions();
-}
-
-function fillBatchOptions() {
-  const el = $("#batch");
-  if (!el) return;
-  const current = el.value;
-  const source = selectedTaskKeys.size
-    ? (META.tasks || []).filter((t) => selectedTaskKeys.has(t.key))
-    : (META.tasks || []);
-  const batches = [];
-  const seen = new Set();
-  for (const task of source) {
-    for (const batch of task.batches || []) {
-      if (!batch.key || seen.has(batch.key)) continue;
-      seen.add(batch.key);
-      batches.push({
-        key: batch.key,
-        label: selectedTaskKeys.size === 1
-          ? batch.key
-          : `${task.label || task.key} · ${batch.key}`,
-        count: batch.count,
-      });
-    }
-  }
-  el.innerHTML = `<option value="">全部批次</option>${batches.map((b) =>
-    `<option value="${esc(b.key)}">${esc(b.label)}${b.count != null ? `（${b.count}）` : ""}</option>`
-  ).join("")}`;
-  if ([...el.options].some((opt) => opt.value === current)) el.value = current;
 }
 
 function fmtCrawlTasks(role) {
@@ -624,7 +593,6 @@ function getFilters() {
   return {
     serverKeys: getSelectedServerKeys(),
     taskKeys: getSelectedTaskKeys(),
-    batch: $("#batch")?.value || "",
     saleStatuses: getSelectedSaleStatuses(),
     goldMin: $("#goldMin").value ? Number($("#goldMin").value) : null,
     roleName: $("#roleName").value.trim(),
@@ -1082,7 +1050,7 @@ async function loadMeta() {
 
 async function fetchRoles(page = DATA.page) {
   const f = getFilters();
-  if (!f.serverKeys.length && !f.taskKeys.length && !f.batch) {
+  if (!f.serverKeys.length && !f.taskKeys.length) {
     throw new Error("请选择服务器或任务");
   }
 
@@ -1098,7 +1066,6 @@ async function fetchRoles(page = DATA.page) {
   for (const key of f.taskKeys) {
     params.append("task_key", key);
   }
-  if (f.batch) params.set("batch", f.batch);
   if (f.goldMin != null) params.set("gold_min", String(f.goldMin));
   if (f.roleName) params.set("role_name", f.roleName);
   if (f.school) params.set("school", f.school);
@@ -1132,7 +1099,6 @@ async function fetchRoles(page = DATA.page) {
   DATA.totalPages = record.total_pages || 1;
   DATA.serverKeys = f.serverKeys;
   DATA.taskKeys = f.taskKeys;
-  DATA.batch = f.batch;
   DATA.loaded = true;
   const names = f.serverKeys.map(
     (key) => META.servers.find((s) => s.key === key)?.server_name || key,
@@ -1143,7 +1109,6 @@ async function fetchRoles(page = DATA.page) {
   const parts = [];
   if (names.length) parts.push(names.join("、"));
   if (taskNames.length) parts.push(taskNames.join("、"));
-  if (f.batch) parts.push(f.batch);
   DATA.metaText = `${parts.join(" · ") || "全部"} · 共 ${DATA.total} 条 · 更新于 ${record.updated_at || "-"}`;
 }
 
@@ -1307,7 +1272,6 @@ $("#taskList")?.addEventListener("click", (e) => {
     option.setAttribute("aria-selected", "true");
   }
   updateTaskMultiLabel();
-  fillBatchOptions();
 });
 
 $("#selectAllTasks")?.addEventListener("click", () => {
