@@ -126,7 +126,6 @@ const SHIKONG_OPEN_DATES = {
   诗和远方: "2024-10-04",
   佳人有约: "2024-11-01",
   "＃２４": "2024-11-22",
-  ＃２４: "2024-11-22",
 };
 
 function currentExp(role) {
