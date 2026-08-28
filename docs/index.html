@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>角色查询</title>
   <link rel="stylesheet" href="style.css">
   <script src="config.js"></script>
@@ -12,7 +13,11 @@
     <p id="meta">请选择服务器或任务后点击「查询」</p>
   </header>
 
-  <section class="filters card">
+  <section class="filters card" id="filtersCard">
+    <div class="filter-sheet-head mobile-only">
+      <strong>筛选条件</strong>
+      <button id="closeFilters" type="button" class="link-btn">完成</button>
+    </div>
     <div class="row">
       <label>大区
         <select id="area">
@@ -150,6 +155,11 @@
       <button class="modal-close" type="button" data-close aria-label="关闭">&times;</button>
       <div id="roleModalBody"></div>
     </div>
+  </div>
+
+  <div class="mobile-bar mobile-only">
+    <button id="openFilters" type="button" class="mobile-bar-btn">筛选</button>
+    <button id="searchBtnMobile" type="button" class="mobile-bar-btn primary">查询</button>
   </div>
 
   <script src="app.js"></script>

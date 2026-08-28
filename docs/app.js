@@ -687,9 +687,9 @@ function renderEquipRow(eq) {
     .filter(Boolean)
     .join(" · ");
   return `<tr>
-    <td>${esc(eq.name)}</td>
-    <td>${esc(eq.amount ?? 1)}</td>
-    <td>${esc(extra)}</td>
+    <td data-label="名称">${esc(eq.name)}</td>
+    <td data-label="数量">${esc(eq.amount ?? 1)}</td>
+    <td data-label="属性">${esc(extra)}</td>
   </tr>`;
 }
 
@@ -702,12 +702,12 @@ function renderPetRow(pet) {
   ].filter(Boolean).join(" · ");
   const isShenshou = Number(pet.life) === SHENSHOU_LIFE;
   return `<tr>
-    <td>${esc(pet.name)}${isShenshou ? ' <span class="shenshou-tag">神兽</span>' : ""}</td>
-    <td>${esc(pet.level ?? "-")}</td>
-    <td>${esc(pet.pet_score ?? "-")}</td>
-    <td class="${isShenshou ? "shenshou" : ""}">${esc(fmtLife(pet.life))}</td>
-    <td>${esc(pet.skills ?? "-")}</td>
-    <td>${esc(extra)}</td>
+    <td data-label="名称">${esc(pet.name)}${isShenshou ? ' <span class="shenshou-tag">神兽</span>' : ""}</td>
+    <td data-label="等级">${esc(pet.level ?? "-")}</td>
+    <td data-label="评分">${esc(pet.pet_score ?? "-")}</td>
+    <td data-label="寿命" class="${isShenshou ? "shenshou" : ""}">${esc(fmtLife(pet.life))}</td>
+    <td data-label="技能">${esc(pet.skills ?? "-")}</td>
+    <td data-label="属性">${esc(extra)}</td>
   </tr>`;
 }
 
@@ -824,6 +824,67 @@ function sortRoles(roles) {
   });
 }
 
+const MOBILE_SORTS = [
+  ["material_ratio", "物资比"],
+  ["price", "价格"],
+  ["gold", "金币"],
+  ["gold_ratio", "金币/价格"],
+  ["usable_exp", "可使用经验"],
+  ["boost115", "直升115"],
+  ["boost89", "直升89"],
+  ["level", "等级"],
+  ["xianyu", "仙玉"],
+  ["shenshou", "神兽"],
+];
+
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
+function setFiltersOpen(open) {
+  $("#filtersCard")?.classList.toggle("is-open", open);
+  document.body.classList.toggle("filters-open", open);
+}
+
+function renderMobileSortBar() {
+  return `<label class="mobile-sort mobile-only">排序
+    <select id="mobileSort" aria-label="排序">
+      ${MOBILE_SORTS.map(([key, label]) =>
+        `<option value="${esc(key)}"${roleSort.key === key ? " selected" : ""}>${esc(label)}</option>`
+      ).join("")}
+    </select>
+  </label>`;
+}
+
+function renderRoleCard(r) {
+  const itemTags = KEY_ITEMS.filter((item) => keyItemCount(r, item.key) > 0)
+    .map((item) => `<span class="tag key-item ${item.css}">${esc(item.label)} ${esc(keyItemCount(r, item.key))}</span>`)
+    .join("");
+  const shenshou = shenshouCount(r);
+  return `<article class="role-card role-row" data-role-key="${esc(roleKey(r))}" tabindex="0">
+    <div class="role-card-top">
+      <div>
+        <div class="role-card-name">${esc(r.role_name)} · ${esc(r.school)} ${esc(r.level ?? "")}</div>
+        <div class="role-card-sub">${esc(r.area_name || "")} ${esc(r.server_name || "")}</div>
+      </div>
+      <div class="role-card-price">¥${esc(r.price)}</div>
+    </div>
+    <div class="role-card-meta">
+      <span class="sale-tag ${esc(r.sale_status || "unknown")}">${esc(fmtSaleStatus(r))}</span>
+      <span class="sale-time">${esc(fmtSaleTime(r))}</span>
+      ${fmtCrawlTasks(r)}
+    </div>
+    <div class="role-card-grid">
+      <div class="role-card-kv"><div class="k">金币</div><div class="v gold">${esc(fmtGoldWan(r))}万</div></div>
+      <div class="role-card-kv"><div class="k">金币/价格</div><div class="v ratio">${esc(fmtRatio(r))}</div></div>
+      <div class="role-card-kv"><div class="k">物资比</div><div class="v ratio">${esc(fmtMaterialRatio(r))}</div></div>
+      <div class="role-card-kv"><div class="k">可使用经验</div><div class="v">${esc(fmtExpYi(usableExp(r)))}</div></div>
+    </div>
+    <div class="boost-bars">${renderBoostBar(boost89(r), "89")}${renderBoostBar(boost115(r), "115")}</div>
+    ${itemTags || shenshou ? `<div class="role-card-items">${itemTags}${shenshou ? `<span class="tag key-item">${esc(`神兽 ${shenshou}`)}</span>` : ""}</div>` : ""}
+  </article>`;
+}
+
 function sortHeaderHtml(label, key) {
   const active = roleSort.key === key;
   const arrow = active ? (roleSort.dir === "asc" ? "↑" : "↓") : "↕";
@@ -842,7 +903,7 @@ function renderRoles(roles) {
   }
   const sorted = sortRoles(roles);
   const totals = computeItemTotals(roles);
-  rolesPanel.innerHTML = `<div class="roles-list">${renderListSummary(totals)}<div class="table-wrap"><table class="roles-table">
+  rolesPanel.innerHTML = `<div class="roles-list">${renderListSummary(totals)}${renderMobileSortBar()}<div class="role-cards mobile-only">${sorted.map(renderRoleCard).join("")}</div><div class="table-wrap desktop-only"><table class="roles-table">
     <thead><tr>
       <th>大区</th>
       <th>服务器</th>
@@ -912,12 +973,29 @@ function renderRoles(roles) {
   </table></div></div>`;
 }
 
+function renderDataCard(row, columns) {
+  const title = row["名称"] || row.role_name || "-";
+  const skip = new Set(["名称"]);
+  const sub = [row.area_name, row.server_name, row.role_name]
+    .filter((v, i, arr) => v && arr.indexOf(v) === i)
+    .join(" · ");
+  const kvs = columns
+    .filter((c) => !skip.has(c.key) && row[c.key] != null && row[c.key] !== "")
+    .map((c) => `<div class="role-card-kv"><div class="k">${esc(c.label)}</div><div class="v">${esc(row[c.key])}</div></div>`)
+    .join("");
+  return `<article class="data-card">
+    <div class="data-card-title">${esc(title)}</div>
+    ${sub ? `<div class="data-card-sub">${esc(sub)}</div>` : ""}
+    <div class="role-card-grid">${kvs}</div>
+  </article>`;
+}
+
 function renderTable(panel, rows, columns) {
   if (!rows.length) {
     panel.innerHTML = '<div class="empty">无匹配数据</div>';
     return;
   }
-  panel.innerHTML = `<div class="table-wrap"><table class="data-table">
+  panel.innerHTML = `<div class="data-cards mobile-only">${rows.map((row) => renderDataCard(row, columns)).join("")}</div><div class="table-wrap desktop-only"><table class="data-table">
     <thead><tr>${columns.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(row[c.key])}</td>`).join("")}</tr>`).join("")}</tbody>
   </table></div>`;
@@ -1127,11 +1205,14 @@ async function runSearch(page = 1) {
   render();
 }
 
-$("#searchBtn").addEventListener("click", async () => {
+async function handleSearchClick() {
   const btn = $("#searchBtn");
+  const mobileBtn = $("#searchBtnMobile");
   btn.disabled = true;
+  if (mobileBtn) mobileBtn.disabled = true;
   try {
     await runSearch(1);
+    if (isMobileLayout()) setFiltersOpen(false);
   } catch (err) {
     DATA.loaded = false;
     meta.textContent = `加载失败 — ${err.message}`;
@@ -1139,8 +1220,19 @@ $("#searchBtn").addEventListener("click", async () => {
     paginationBar.hidden = true;
   } finally {
     btn.disabled = false;
+    if (mobileBtn) mobileBtn.disabled = false;
   }
+}
+
+$("#searchBtn").addEventListener("click", handleSearchClick);
+$("#searchBtnMobile")?.addEventListener("click", () => $("#searchBtn").click());
+$("#openFilters")?.addEventListener("click", () => {
+  const open = $("#filtersCard")?.classList.contains("is-open");
+  setFiltersOpen(!open);
 });
+$("#closeFilters")?.addEventListener("click", () => setFiltersOpen(false));
+
+if (isMobileLayout()) setFiltersOpen(true);
 
 $("#area").addEventListener("change", () => {
   fillServerOptions($("#area").value);
@@ -1295,6 +1387,10 @@ document.addEventListener("click", (e) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  if ($("#filtersCard")?.classList.contains("is-open") && isMobileLayout()) {
+    setFiltersOpen(false);
+    return;
+  }
   if ($("#taskMultiPanel") && !$("#taskMultiPanel").hidden) {
     setTaskMultiOpen(false);
     $("#taskMultiTrigger")?.focus();
@@ -1342,8 +1438,21 @@ nextPageBtn.addEventListener("click", async () => {
   });
 });
 
+rolesPanel.addEventListener("change", (e) => {
+  if (e.target.id !== "mobileSort") return;
+  const key = e.target.value;
+  if (!key || !ROLE_SORT_KEYS[key]) return;
+  if (roleSort.key === key) return;
+  roleSort.key = key;
+  roleSort.dir = DESC_SORT_KEYS.has(key) ? "desc" : "asc";
+  if (DATA.loaded) $("#searchBtn").click();
+});
+
 rolesPanel.addEventListener("click", (e) => {
   const sortHeader = e.target.closest("th.sortable");
+  if (e.target.id === "mobileSort" || e.target.closest?.("#mobileSort")) {
+    return;
+  }
   if (sortHeader?.dataset.sort) {
     const key = sortHeader.dataset.sort;
     if (roleSort.key === key) {
