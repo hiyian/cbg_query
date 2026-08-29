@@ -28,7 +28,7 @@ from .role_metrics import (
     material_ratio,
     pet_slot_count,
 )
-from .sale_status import sale_status_label
+from .sale_status import resolve_live_sale_status, sale_status_label
 
 ROLE_DETAIL_KEYS = frozenset(
     {
@@ -327,7 +327,7 @@ def _match_role_filters(
     sale_statuses: list[str] | None = None,
 ) -> bool:
     if sale_statuses:
-        status = role.get("sale_status")
+        status = resolve_live_sale_status(role.get("sale_status"), role.get("selling_time"))
         if status not in sale_statuses:
             return False
     if gold_min_wan is not None and gold_wan(role) < gold_min_wan:
@@ -407,6 +407,38 @@ def _crawl_tag_contains(*items: dict[str, str]) -> tuple[str, list[Any]]:
     return "(" + " OR ".join(clauses) + ")", params
 
 
+def apply_sale_status_by_time(conn: psycopg.Connection) -> int:
+    """有 selling_time 的角色：当前时间未到可购买则公示期，到了则上架中。已售/审核中不改。"""
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE roles
+            SET sale_status = CASE
+                  WHEN (
+                    CASE WHEN selling_time > 1000000000000
+                         THEN selling_time / 1000 ELSE selling_time END
+                  ) > %s THEN 'fair_show'
+                  ELSE 'onsale'
+                END
+            WHERE selling_time IS NOT NULL
+              AND sale_status IS DISTINCT FROM 'sold'
+              AND sale_status IS DISTINCT FROM 'reviewing'
+              AND sale_status IS DISTINCT FROM (
+                CASE
+                  WHEN (
+                    CASE WHEN selling_time > 1000000000000
+                         THEN selling_time / 1000 ELSE selling_time END
+                  ) > %s THEN 'fair_show'
+                  ELSE 'onsale'
+                END
+              )
+            """,
+            (now_ts, now_ts),
+        )
+        return cur.rowcount or 0
+
+
 def query_roles(
     *,
     server_keys: list[str] | None = None,
@@ -468,14 +500,18 @@ def query_roles(
     if gold_min_wan is not None:
         conditions.append("r.gold >= %s")
         params.append(int(gold_min_wan * 10_000))
-    if sale_statuses:
-        status_placeholders = ", ".join(["%s"] * len(sale_statuses))
+    sql_sale_statuses = list(sale_statuses or [])
+    if sale_statuses and ({"fair_show", "onsale"} & set(sale_statuses)):
+        sql_sale_statuses = sorted(set(sale_statuses) | {"fair_show", "onsale"})
+    if sql_sale_statuses:
+        status_placeholders = ", ".join(["%s"] * len(sql_sale_statuses))
         conditions.append(f"r.sale_status IN ({status_placeholders})")
-        params.extend(sale_statuses)
+        params.extend(sql_sale_statuses)
 
     where = " AND ".join(conditions)
 
     with db_conn() as conn:
+        apply_sale_status_by_time(conn)
         with conn.cursor() as cur:
             cur.execute(
                 f"""

@@ -457,29 +457,92 @@ function getServerSearchQuery() {
   return ($("#serverSearch")?.value || "").trim();
 }
 
-function fmtSaleStatus(role) {
-  return role.sale_status_label || "-";
+function sellingTs(role) {
+  const raw = Number(role?.selling_time || 0);
+  if (!raw) return 0;
+  return raw > 1_000_000_000_000 ? Math.floor(raw / 1000) : raw;
 }
 
-function fmtSaleTime(role) {
-  const status = role.sale_status;
-  if (status === "sold") return "已售出";
-  if (role.sale_time_text) return role.sale_time_text;
-  const sellingTime = Number(role.selling_time || 0);
-  if (!status || !sellingTime) return "-";
+function liveSaleStatus(role, nowMs = Date.now()) {
+  const stored = role.sale_status || "";
+  if (stored === "sold" || stored === "reviewing") return stored;
+  const ts = sellingTs(role);
+  if (!ts) return stored;
+  return ts * 1000 > nowMs ? "fair_show" : "onsale";
+}
 
-  const ts = sellingTime > 1_000_000_000_000 ? Math.floor(sellingTime / 1000) : sellingTime;
+function saleStatusLabel(status) {
+  if (status === "fair_show") return "公示期";
+  if (status === "onsale") return "上架中";
+  if (status === "reviewing") return "审核中";
+  if (status === "sold") return "已售出";
+  return status || "-";
+}
+
+function fmtSaleStatus(role) {
+  return saleStatusLabel(liveSaleStatus(role));
+}
+
+function fmtSaleTime(role, nowMs = Date.now()) {
+  const status = liveSaleStatus(role, nowMs);
+  if (status === "sold") return "已售出";
+  if (status === "reviewing") return "审核中";
+  const ts = sellingTs(role);
+  if (!ts) {
+    return status === "fair_show" ? "公示结束时间未收录" : "-";
+  }
+
   const dt = new Date(ts * 1000);
   const timeText = `${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
-
   if (status === "fair_show") {
-    const remain = ts - Math.floor(Date.now() / 1000);
-    if (remain > 0) return `${fmtRemain(remain)}后上架`;
-    return `${timeText} 上架`;
+    const remain = ts - Math.floor(nowMs / 1000);
+    if (remain > 0) return `至 ${timeText} · ${fmtRemain(remain)}后可买`;
+    return `${timeText} 已可买`;
   }
   if (status === "onsale") return `${timeText} 上架`;
-  if (status === "reviewing") return "审核中";
   return timeText;
+}
+
+function saleTimeHtml(role) {
+  const ts = sellingTs(role);
+  const status = liveSaleStatus(role);
+  const remain = ts ? ts - Math.floor(Date.now() / 1000) : 0;
+  const counting = status === "fair_show" && remain > 0;
+  return `<span class="sale-time${counting ? " is-countdown" : ""}${status === "fair_show" ? " is-fair" : ""}" data-sale-status="${esc(role.sale_status || "")}" data-selling-time="${ts}">${esc(fmtSaleTime(role))}</span>`;
+}
+
+let saleTickTimer = null;
+
+function refreshSaleTimes() {
+  const allowed = getSelectedSaleStatuses();
+  document.querySelectorAll(".sale-time[data-selling-time]").forEach((el) => {
+    const role = {
+      sale_status: el.dataset.saleStatus,
+      selling_time: Number(el.dataset.sellingTime || 0),
+    };
+    const live = liveSaleStatus(role);
+    const remain = sellingTs(role) ? sellingTs(role) - Math.floor(Date.now() / 1000) : 0;
+    el.textContent = fmtSaleTime(role);
+    el.classList.toggle("is-countdown", live === "fair_show" && remain > 0);
+    el.classList.toggle("is-fair", live === "fair_show");
+    const row = el.closest(".role-row, .stat-item");
+    const tag = row?.querySelector(".sale-tag");
+    if (tag) {
+      tag.className = `sale-tag ${live || "unknown"}`;
+      tag.textContent = saleStatusLabel(live);
+    }
+    const listRow = el.closest(".role-row");
+    if (listRow && allowed.length && live && !allowed.includes(live)) {
+      listRow.hidden = true;
+    }
+  });
+}
+
+function startSaleTick() {
+  if (saleTickTimer) clearInterval(saleTickTimer);
+  saleTickTimer = null;
+  if (!document.querySelector(".sale-time.is-countdown")) return;
+  saleTickTimer = setInterval(refreshSaleTimes, 1000);
 }
 
 function fmtRemain(seconds) {
@@ -714,7 +777,7 @@ function renderPetRow(pet) {
 function showRoleDetail(role) {
   const stats = [
     ["大区", role.area_name], ["服务器", role.server_name],
-    ["上架状态", fmtSaleStatus(role)], ["时间", fmtSaleTime(role)],
+    ["上架状态", fmtSaleStatus(role)], ["可购买", fmtSaleTime(role)],
     ["金币（万）", fmtGoldWan(role)], ["冻结金币（万）", fmtFreezeWan(role)],
     ["金币/价格", fmtRatio(role)], ["物资比", fmtMaterialRatio(role)], ["物资估算金币", fmtMaterialGold(role)],
     ...KEY_ITEMS.map((item) => [item.label, keyItemCount(role, item.key) || "-"]),
@@ -747,7 +810,7 @@ function showRoleDetail(role) {
       ${stats.map(([label, value]) => `
         <div class="stat-item">
           <div class="label">${esc(label)}</div>
-          <div class="value">${esc(fmtStatValue(value))}</div>
+          <div class="value">${label === "可购买" ? saleTimeHtml(role) : esc(fmtStatValue(value))}</div>
         </div>
       `).join("")}
     </div>
@@ -776,6 +839,7 @@ function showRoleDetail(role) {
 
   roleModal.hidden = false;
   document.body.classList.add("modal-open");
+  startSaleTick();
 }
 
 function closeRoleModal() {
@@ -870,8 +934,8 @@ function renderRoleCard(r) {
       <div class="role-card-price">¥${esc(r.price)}</div>
     </div>
     <div class="role-card-meta">
-      <span class="sale-tag ${esc(r.sale_status || "unknown")}">${esc(fmtSaleStatus(r))}</span>
-      <span class="sale-time">${esc(fmtSaleTime(r))}</span>
+      <span class="sale-tag ${esc(liveSaleStatus(r) || "unknown")}">${esc(fmtSaleStatus(r))}</span>
+      ${saleTimeHtml(r)}
       ${fmtCrawlTasks(r)}
     </div>
     <div class="role-card-grid">
@@ -918,7 +982,7 @@ function renderRoles(roles) {
       <th class="col-boost sortable" data-sort="boost115">${sortHeaderHtml("直升115", "boost115")}</th>
       <th class="num sortable" data-sort="price">${sortHeaderHtml("价格", "price")}</th>
       <th>状态</th>
-      <th>时间</th>
+      <th>可购买</th>
       <th class="num sortable" data-sort="gold">${sortHeaderHtml("金币(万)", "gold")}</th>
       <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
       <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结(万)", "freeze")}</th>
@@ -950,8 +1014,8 @@ function renderRoles(roles) {
         <td class="col-boost">${renderBoostBar(boost89(r), "89")}</td>
         <td class="col-boost">${renderBoostBar(boost115(r), "115")}</td>
         <td class="num price">¥${esc(r.price)}</td>
-        <td><span class="sale-tag ${esc(r.sale_status || "unknown")}">${esc(fmtSaleStatus(r))}</span></td>
-        <td class="sale-time">${esc(fmtSaleTime(r))}</td>
+        <td><span class="sale-tag ${esc(liveSaleStatus(r) || "unknown")}">${esc(fmtSaleStatus(r))}</span></td>
+        <td>${saleTimeHtml(r)}</td>
         <td class="num gold">${esc(fmtGoldWan(r))}</td>
         <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
         <td class="num freeze">${esc(fmtFreezeWan(r))}</td>
@@ -1041,6 +1105,7 @@ function render() {
     ? `${DATA.metaText} · 本页 ${roles.length} 条`
     : `本页 ${roles.length} 条`;
   renderPagination();
+  startSaleTick();
 }
 
 function renderPagination() {

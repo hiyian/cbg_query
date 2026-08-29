@@ -46,6 +46,31 @@ def extract_sale_info(raw: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def normalize_selling_ts(selling_time: Any) -> int | None:
+    ts = _to_int(selling_time)
+    if not ts:
+        return None
+    return ts // 1000 if ts > 1_000_000_000_000 else ts
+
+
+def resolve_live_sale_status(
+    sale_status: str | None,
+    selling_time: Any,
+    *,
+    now: datetime | None = None,
+) -> str | None:
+    """有可购买时间时，用当前时间刷新是否仍在公示期。已售/审核中不改。"""
+    if sale_status in (SALE_REVIEWING, SALE_SOLD):
+        return sale_status
+    ts = normalize_selling_ts(selling_time)
+    if not ts:
+        return sale_status
+    current = now or datetime.now().astimezone()
+    if ts > int(current.timestamp()):
+        return SALE_FAIR_SHOW
+    return SALE_ONSALE
+
+
 def sale_status_label(status: str | None) -> str:
     if not status:
         return ""
@@ -75,8 +100,8 @@ def format_sale_time(
         current = now or datetime.now().astimezone()
         remain = ts - int(current.timestamp())
         if remain > 0:
-            return f"{_fmt_remain(remain)}后上架"
-        return f"{time_text} 上架"
+            return f"至 {time_text} · {_fmt_remain(remain)}后可买"
+        return f"{time_text} 已可买"
 
     if sale_status == SALE_ONSALE:
         return f"{time_text} 上架"

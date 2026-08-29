@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from .key_items import count_fabao_essence_from_equips, count_key_items_from_equips
-from .sale_status import format_sale_time, sale_status_label
+from .sale_status import format_sale_time, resolve_live_sale_status, sale_status_label
 
 SHENDOUDOU_GOLD = 30_000
 BAOSHICHUI_GOLD = 25_000
@@ -215,11 +215,12 @@ def enrich_role(role: dict[str, Any]) -> dict[str, Any]:
     role["gold_ratio"] = gold_ratio(role)
     role["material_gold"] = estimated_material_gold(role, items)
     role["material_ratio"] = material_ratio(role, items)
-    status = role.get("sale_status")
+    status = resolve_live_sale_status(role.get("sale_status"), role.get("selling_time"))
+    role["sale_status"] = status
     if status:
-        role.setdefault("sale_status_label", sale_status_label(status))
+        role["sale_status_label"] = sale_status_label(status)
     role["sale_time_text"] = format_sale_time(
-        sale_status=role.get("sale_status"),
+        sale_status=status,
         selling_time=role.get("selling_time"),
     )
     return role
