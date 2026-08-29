@@ -254,6 +254,9 @@ body {
 .sale-time.is-fair {
   color: #ffb464;
 }
+.sale-time.is-sold {
+  color: #9aa7b8;
+}
 .sale-time.is-countdown {
   display: inline-block;
   padding: 2px 8px;

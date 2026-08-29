@@ -508,7 +508,12 @@ function saleTimeHtml(role) {
   const status = liveSaleStatus(role);
   const remain = ts ? ts - Math.floor(Date.now() / 1000) : 0;
   const counting = status === "fair_show" && remain > 0;
-  return `<span class="sale-time${counting ? " is-countdown" : ""}${status === "fair_show" ? " is-fair" : ""}" data-sale-status="${esc(role.sale_status || "")}" data-selling-time="${ts}">${esc(fmtSaleTime(role))}</span>`;
+  const extras = [
+    counting ? "is-countdown" : "",
+    status === "fair_show" ? "is-fair" : "",
+    status === "sold" ? "is-sold" : "",
+  ].filter(Boolean).join(" ");
+  return `<span class="sale-time${extras ? ` ${extras}` : ""}" data-sale-status="${esc(role.sale_status || "")}" data-selling-time="${ts}">${esc(fmtSaleTime(role))}</span>`;
 }
 
 let saleTickTimer = null;
@@ -525,6 +530,7 @@ function refreshSaleTimes() {
     el.textContent = fmtSaleTime(role);
     el.classList.toggle("is-countdown", live === "fair_show" && remain > 0);
     el.classList.toggle("is-fair", live === "fair_show");
+    el.classList.toggle("is-sold", live === "sold");
     const row = el.closest(".role-row, .stat-item");
     const tag = row?.querySelector(".sale-tag");
     if (tag) {
@@ -532,8 +538,8 @@ function refreshSaleTimes() {
       tag.textContent = saleStatusLabel(live);
     }
     const listRow = el.closest(".role-row");
-    if (listRow && allowed.length && live && !allowed.includes(live)) {
-      listRow.hidden = true;
+    if (listRow && allowed.length) {
+      listRow.hidden = Boolean(live && !allowed.includes(live));
     }
   });
 }

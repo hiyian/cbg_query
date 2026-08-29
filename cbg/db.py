@@ -422,8 +422,7 @@ def apply_sale_status_by_time(conn: psycopg.Connection) -> int:
                   ELSE 'onsale'
                 END
             WHERE selling_time IS NOT NULL
-              AND sale_status IS DISTINCT FROM 'sold'
-              AND sale_status IS DISTINCT FROM 'reviewing'
+              AND sale_status IN ('fair_show', 'onsale')
               AND sale_status IS DISTINCT FROM (
                 CASE
                   WHEN (
