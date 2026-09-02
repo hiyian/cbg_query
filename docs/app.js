@@ -591,6 +591,68 @@ function getSelectedTaskKeys() {
   return [...selectedTaskKeys];
 }
 
+function splitQueryValues(params, ...names) {
+  const values = [];
+  for (const name of names) {
+    for (const raw of params.getAll(name)) {
+      for (const part of String(raw).split(",")) {
+        const value = part.trim();
+        if (value) values.push(value);
+      }
+    }
+  }
+  return [...new Set(values)];
+}
+
+function resolveTaskKey(value) {
+  const tasks = META.tasks || [];
+  if (tasks.some((t) => t.key === value)) return value;
+  const byLabel = tasks.find((t) => t.label === value);
+  return byLabel ? byLabel.key : value;
+}
+
+function resolveServerKey(value) {
+  const servers = META.servers || [];
+  if (servers.some((s) => s.key === value)) return value;
+  const matched = servers.find(
+    (s) => s.server_name === value || s.pinyin === value,
+  );
+  return matched ? matched.key : value;
+}
+
+function applyQueryFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const tasks = splitQueryValues(params, "task", "task_key").map(resolveTaskKey);
+  const servers = splitQueryValues(params, "server", "server_key").map(resolveServerKey);
+  const area = (params.get("area") || "").trim();
+  const page = Number(params.get("page") || "1");
+
+  if (area && (META.areas || []).includes(area)) {
+    $("#area").value = area;
+  }
+  selectedTaskKeys = new Set(tasks);
+  selectedServerKeys = new Set(servers);
+  fillTaskOptions();
+  fillServerOptions($("#area").value);
+  return {
+    auto: tasks.length > 0 || servers.length > 0,
+    page: Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1,
+  };
+}
+
+function syncQueryToUrl(page = DATA.page) {
+  const params = new URLSearchParams();
+  for (const key of getSelectedTaskKeys()) params.append("task", key);
+  for (const key of getSelectedServerKeys()) params.append("server", key);
+  const area = $("#area")?.value;
+  if (area) params.set("area", area);
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  const next = qs ? `${location.pathname}?${qs}` : location.pathname;
+  const current = `${location.pathname}${location.search}`;
+  if (next !== current) history.replaceState(null, "", next);
+}
+
 function updateTaskMultiLabel() {
   const label = $("#taskMultiLabel");
   if (!label) return;
@@ -1195,6 +1257,10 @@ async function loadMeta() {
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   META = await resp.json();
   buildFilterOptions();
+  const boot = applyQueryFromUrl();
+  if (boot.auto) {
+    await handleSearchAtPage(boot.page);
+  }
 }
 
 async function fetchRoles(page = DATA.page) {
@@ -1273,16 +1339,17 @@ document.querySelectorAll(".tab").forEach((btn) => {
 async function runSearch(page = 1) {
   DATA.page = page;
   await fetchRoles(page);
+  syncQueryToUrl(page);
   render();
 }
 
-async function handleSearchClick() {
+async function handleSearchAtPage(page) {
   const btn = $("#searchBtn");
   const mobileBtn = $("#searchBtnMobile");
   btn.disabled = true;
   if (mobileBtn) mobileBtn.disabled = true;
   try {
-    await runSearch(1);
+    await runSearch(page);
     if (isMobileLayout()) setFiltersOpen(false);
   } catch (err) {
     DATA.loaded = false;
@@ -1293,6 +1360,10 @@ async function handleSearchClick() {
     btn.disabled = false;
     if (mobileBtn) mobileBtn.disabled = false;
   }
+}
+
+async function handleSearchClick() {
+  await handleSearchAtPage(1);
 }
 
 $("#searchBtn").addEventListener("click", handleSearchClick);

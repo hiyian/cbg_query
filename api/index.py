@@ -90,6 +90,10 @@ def list_roles(
         list[str] | None,
         Query(description="抓取任务 key，可重复传参多选"),
     ] = None,
+    task: Annotated[
+        list[str] | None,
+        Query(description="task_key 简写，可重复或逗号分隔"),
+    ] = None,
     batch: Annotated[
         str | None,
         Query(description="抓取批次 key"),
@@ -120,7 +124,12 @@ def list_roles(
     ] = False,
 ) -> dict:
     server_keys = [key.strip() for key in (server_key or []) if key and key.strip()]
-    task_keys = [key.strip() for key in (task_key or []) if key and key.strip()]
+    task_keys = []
+    for raw in [*(task_key or []), *(task or [])]:
+        for part in str(raw).split(","):
+            key = part.strip()
+            if key:
+                task_keys.append(key)
     batch_key = (batch or "").strip() or None
     if not server_keys and not task_keys and not batch_key:
         if legacy_all:

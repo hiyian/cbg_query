@@ -90,6 +90,7 @@ cd docs && python3 -m http.server 8080
 | `GET /api/health` | 健康检查 |
 | `GET /api/meta` | 大区 / 门派 / 服务器 / 任务与批次 |
 | `GET /api/roles?server_key=xxx&task_key=yyy` | 分页查询角色（服务器或任务至少选一个） |
+| `GET /api/roles?task=yyy` | 同上，`task` 是 `task_key` 简写；页面也支持 `/?task=yyy` |
 
 ## 环境变量
 
