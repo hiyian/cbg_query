@@ -105,7 +105,7 @@ def list_roles(
     gold_min: Annotated[float | None, Query(description="金币下限（万）")] = None,
     role_name: Annotated[
         list[str] | None,
-        Query(description="角色昵称，可重复、换行或逗号分隔"),
+        Query(description="角色昵称，可重复或换行，一行一个"),
     ] = None,
     nickname: Annotated[
         list[str] | None,
@@ -144,8 +144,8 @@ def list_roles(
     batch_key = (batch or "").strip() or None
     role_name_q: list[str] = []
     for raw in [*(role_name or []), *(nickname or []), *(name or [])]:
-        for part in str(raw).replace("\r", "\n").replace("，", "\n").replace(",", "\n").replace("；", "\n").replace(";", "\n").replace("、", "\n").replace("|", "\n").replace("/", "\n").split("\n"):
-            item = part.strip().strip("。．.")
+        for part in str(raw).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+            item = part.strip()
             if item and item not in role_name_q:
                 role_name_q.append(item)
     if not server_keys and not task_keys and not batch_key and not role_name_q:

@@ -451,8 +451,8 @@ def _normalize_role_names(value: str | list[str] | None) -> list[str]:
     names: list[str] = []
     seen: set[str] = set()
     for raw in raw_items:
-        for part in raw.replace("\r", "\n").replace("，", "\n").replace(",", "\n").replace("；", "\n").replace(";", "\n").replace("、", "\n").replace("|", "\n").replace("/", "\n").split("\n"):
-            name = _sanitize_role_name(part).strip("。．.")
+        for part in raw.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+            name = _sanitize_role_name(part)
             if name and name not in seen:
                 seen.add(name)
                 names.append(name)

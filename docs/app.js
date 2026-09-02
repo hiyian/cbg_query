@@ -580,8 +580,8 @@ function serverMatchesSearch(s, query) {
 
 function parseRoleNames(raw) {
   const parts = String(raw ?? "")
-    .split(/[\n\r,，;；、|／/]+/)
-    .map((part) => part.replace(/^[、，,;；。．.\s]+|[、，,;；。．.\s]+$/g, "").trim())
+    .split(/\r\n|\r|\n/)
+    .map((part) => part.trim())
     .filter(Boolean);
   return [...new Set(parts)].slice(0, 80);
 }
