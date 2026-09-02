@@ -103,9 +103,18 @@ def list_roles(
     sort: Annotated[str, Query(description="排序字段")] = "material_ratio",
     sort_dir: Annotated[Literal["asc", "desc"], Query()] = "desc",
     gold_min: Annotated[float | None, Query(description="金币下限（万）")] = None,
-    role_name: Annotated[str | None, Query(description="角色昵称，模糊匹配")] = None,
-    nickname: Annotated[str | None, Query(description="role_name 别名")] = None,
-    name: Annotated[str | None, Query(description="昵称简写")] = None,
+    role_name: Annotated[
+        list[str] | None,
+        Query(description="角色昵称，可重复、换行或逗号分隔"),
+    ] = None,
+    nickname: Annotated[
+        list[str] | None,
+        Query(description="role_name 别名"),
+    ] = None,
+    name: Annotated[
+        list[str] | None,
+        Query(description="昵称简写，可重复"),
+    ] = None,
     school: Annotated[str | None, Query()] = None,
     price_min: Annotated[float | None, Query()] = None,
     price_max: Annotated[float | None, Query()] = None,
@@ -133,7 +142,12 @@ def list_roles(
             if key:
                 task_keys.append(key)
     batch_key = (batch or "").strip() or None
-    role_name_q = (role_name or nickname or name or "").strip() or None
+    role_name_q: list[str] = []
+    for raw in [*(role_name or []), *(nickname or []), *(name or [])]:
+        for part in str(raw).replace("\r", "\n").replace("，", "\n").replace(",", "\n").replace("；", "\n").replace(";", "\n").replace("、", "\n").split("\n"):
+            item = part.strip()
+            if item and item not in role_name_q:
+                role_name_q.append(item)
     if not server_keys and not task_keys and not batch_key and not role_name_q:
         if legacy_all:
             return fetch_roles(server_key=None)

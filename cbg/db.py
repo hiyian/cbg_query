@@ -438,6 +438,27 @@ def apply_sale_status_by_time(conn: psycopg.Connection) -> int:
         return cur.rowcount or 0
 
 
+def _sanitize_role_name(value: str) -> str:
+    return "".join(ch for ch in (value or "").strip() if ch not in "%_\\")
+
+
+def _normalize_role_names(value: str | list[str] | None) -> list[str]:
+    raw_items: list[str] = []
+    if isinstance(value, str):
+        raw_items.append(value)
+    elif value:
+        raw_items.extend(str(item) for item in value)
+    names: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_items:
+        for part in raw.replace("\r", "\n").replace("，", "\n").replace(",", "\n").replace("；", "\n").replace(";", "\n").replace("、", "\n").split("\n"):
+            name = _sanitize_role_name(part)
+            if name and name not in seen:
+                seen.add(name)
+                names.append(name)
+    return names[:80]
+
+
 def query_roles(
     *,
     server_keys: list[str] | None = None,
@@ -448,7 +469,7 @@ def query_roles(
     sort: str = "material_ratio",
     sort_dir: str = "desc",
     gold_min_wan: float | None = None,
-    role_name: str | None = None,
+    role_name: str | list[str] | None = None,
     school: str | None = None,
     price_min: float | None = None,
     price_max: float | None = None,
@@ -461,10 +482,8 @@ def query_roles(
     server_keys = [key for key in (server_keys or []) if key]
     task_keys = [key for key in (task_keys or []) if key]
     batch_key = (batch_key or "").strip() or None
-    role_name = (role_name or "").strip() or None
-    if role_name:
-        role_name = "".join(ch for ch in role_name if ch not in "%_\\") or None
-    if not server_keys and not task_keys and not batch_key and not role_name:
+    role_names = _normalize_role_names(role_name)
+    if not server_keys and not task_keys and not batch_key and not role_names:
         raise ValueError("请至少选择服务器、任务或输入昵称")
 
     page = max(page, 1)
@@ -487,9 +506,10 @@ def query_roles(
         conditions.append(clause)
         params.extend(tag_params)
 
-    if role_name:
-        conditions.append("r.role_name ILIKE %s")
-        params.append(f"%{role_name}%")
+    if role_names:
+        placeholders = " OR ".join(["r.role_name ILIKE %s"] * len(role_names))
+        conditions.append(f"({placeholders})")
+        params.extend(f"%{name}%" for name in role_names)
     if school:
         conditions.append("r.school = %s")
         params.append(school)

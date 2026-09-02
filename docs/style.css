@@ -46,13 +46,23 @@ body {
   font-size: 0.85rem;
   color: var(--muted);
 }
-.filters input, .filters select, button {
+.filters input, .filters select, .filters textarea, button {
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: #111822;
   color: var(--text);
   min-width: 120px;
+}
+.filters textarea {
+  min-width: 180px;
+  min-height: 64px;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.4;
+}
+.role-name-filter {
+  flex: 1 1 220px;
 }
 .server-filter {
   min-width: 180px;
@@ -835,6 +845,7 @@ body.modal-open { overflow: hidden; }
   }
   .filters input,
   .filters select,
+  .filters textarea,
   .multiselect-trigger,
   .multiselect-search {
     min-width: 0;
@@ -842,6 +853,7 @@ body.modal-open { overflow: hidden; }
     font-size: 16px;
     min-height: 44px;
   }
+  .filters textarea { min-height: 72px; }
   .filters #searchBtn { display: none; }
   .server-filter {
     min-width: 0;

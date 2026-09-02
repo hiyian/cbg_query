@@ -490,22 +490,36 @@ function serverMatchesSearch(s, query) {
   return false;
 }
 
+function parseRoleNames(raw) {
+  const parts = String(raw ?? "")
+    .split(/[\n\r,，;；、]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return [...new Set(parts)].slice(0, 80);
+}
+
 function highlightMatch(text, query) {
   const raw = String(text ?? "");
   if (!raw) return "";
-  const q = (query || "").trim();
-  if (!q) return esc(raw);
+  const queries = (Array.isArray(query) ? query : parseRoleNames(query))
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+  if (!queries.length) return esc(raw);
   const lower = raw.toLowerCase();
-  const ql = q.toLowerCase();
-  const idx = lower.indexOf(ql);
-  if (idx >= 0) {
-    return (
-      esc(raw.slice(0, idx))
-      + `<mark class="search-hit">${esc(raw.slice(idx, idx + q.length))}</mark>`
-      + esc(raw.slice(idx + q.length))
-    );
+  let best = null;
+  for (const q of queries) {
+    const idx = lower.indexOf(q.toLowerCase());
+    if (idx >= 0 && (!best || q.length > best.q.length)) {
+      best = { idx, q };
+    }
   }
-  return esc(raw);
+  if (!best) return esc(raw);
+  return (
+    esc(raw.slice(0, best.idx))
+    + `<mark class="search-hit">${esc(raw.slice(best.idx, best.idx + best.q.length))}</mark>`
+    + esc(raw.slice(best.idx + best.q.length))
+  );
 }
 
 function getServerSearchQuery() {
@@ -680,21 +694,23 @@ function applyQueryFromUrl() {
   const tasks = splitQueryValues(params, "task", "task_key").map(resolveTaskKey);
   const servers = splitQueryValues(params, "server", "server_key").map(resolveServerKey);
   const area = (params.get("area") || "").trim();
-  const name = (params.get("name") || params.get("nickname") || params.get("role_name") || "").trim();
+  const names = parseRoleNames(
+    ["name", "nickname", "role_name"].flatMap((key) => params.getAll(key)).join("\n"),
+  );
   const page = Number(params.get("page") || "1");
 
   if (area && (META.areas || []).includes(area)) {
     $("#area").value = area;
   }
-  if (name && $("#roleName")) {
-    $("#roleName").value = name;
+  if (names.length && $("#roleName")) {
+    $("#roleName").value = names.join("\n");
   }
   selectedTaskKeys = new Set(tasks);
   selectedServerKeys = new Set(servers);
   fillTaskOptions();
   fillServerOptions($("#area").value);
   return {
-    auto: tasks.length > 0 || servers.length > 0 || Boolean(name),
+    auto: tasks.length > 0 || servers.length > 0 || names.length > 0,
     page: Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1,
   };
 }
@@ -705,8 +721,9 @@ function syncQueryToUrl(page = DATA.page) {
   for (const key of getSelectedServerKeys()) params.append("server", key);
   const area = $("#area")?.value;
   if (area) params.set("area", area);
-  const roleName = $("#roleName")?.value.trim();
-  if (roleName) params.set("name", roleName);
+  for (const name of parseRoleNames($("#roleName")?.value)) {
+    params.append("name", name);
+  }
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   const next = qs ? `${location.pathname}?${qs}` : location.pathname;
@@ -787,7 +804,7 @@ function getFilters() {
     taskKeys: getSelectedTaskKeys(),
     saleStatuses: getSelectedSaleStatuses(),
     goldMin: $("#goldMin").value ? Number($("#goldMin").value) : null,
-    roleName: $("#roleName").value.trim(),
+    roleNames: parseRoleNames($("#roleName")?.value),
     school: $("#school").value,
     priceMin: $("#priceMin").value ? Number($("#priceMin").value) : null,
     priceMax: $("#priceMax").value ? Number($("#priceMax").value) : null,
@@ -928,7 +945,7 @@ function showRoleDetail(role) {
 
   roleModalBody.innerHTML = `
     <div class="detail-header">
-      <h2>${highlightMatch(role.role_name, getFilters().roleName)} · ${esc(role.school)} Lv${esc(role.level)}</h2>
+      <h2>${highlightMatch(role.role_name, getFilters().roleNames)} · ${esc(role.school)} Lv${esc(role.level)}</h2>
       <div class="price">¥${esc(role.price)}</div>
       <div class="sub">${esc(role.area_name)} · ${esc(role.server_name)} · ${esc(role.desc_sumup)}</div>
       <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 金币/价格 ${esc(fmtRatio(role))} · 物资比 ${esc(fmtMaterialRatio(role))}</div>
@@ -1063,7 +1080,7 @@ function renderRoleCard(r) {
   return `<article class="role-card role-row" data-role-key="${esc(roleKey(r))}" tabindex="0">
     <div class="role-card-top">
       <div>
-        <div class="role-card-name">${highlightMatch(r.role_name, getFilters().roleName)} · ${esc(r.school)} ${esc(r.level ?? "")}</div>
+        <div class="role-card-name">${highlightMatch(r.role_name, getFilters().roleNames)} · ${esc(r.school)} ${esc(r.level ?? "")}</div>
         <div class="role-card-sub">${esc(r.area_name || "")} ${esc(r.server_name || "")}</div>
       </div>
       <div class="role-card-price">¥${esc(r.price)}</div>
@@ -1146,7 +1163,7 @@ function renderRoles(roles) {
         <td>${esc(r.area_name)}</td>
         <td>${esc(r.server_name)}</td>
         <td class="task-cell">${fmtCrawlTasks(r)}</td>
-        <td class="name">${highlightMatch(r.role_name, getFilters().roleName)}</td>
+        <td class="name">${highlightMatch(r.role_name, getFilters().roleNames)}</td>
         <td>${esc(r.school)}</td>
         <td class="num">${esc(r.level ?? "-")}</td>
         <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
@@ -1341,7 +1358,7 @@ async function loadMeta() {
 
 async function fetchRoles(page = DATA.page) {
   const f = getFilters();
-  if (!f.serverKeys.length && !f.taskKeys.length && !f.roleName) {
+  if (!f.serverKeys.length && !f.taskKeys.length && !f.roleNames.length) {
     throw new Error("请选择服务器、任务，或输入昵称");
   }
 
@@ -1358,7 +1375,9 @@ async function fetchRoles(page = DATA.page) {
     params.append("task_key", key);
   }
   if (f.goldMin != null) params.set("gold_min", String(f.goldMin));
-  if (f.roleName) params.set("role_name", f.roleName);
+  for (const name of f.roleNames) {
+    params.append("name", name);
+  }
   if (f.school) params.set("school", f.school);
   if (f.priceMin != null) params.set("price_min", String(f.priceMin));
   if (f.priceMax != null) params.set("price_max", String(f.priceMax));
@@ -1400,7 +1419,8 @@ async function fetchRoles(page = DATA.page) {
   const parts = [];
   if (names.length) parts.push(names.join("、"));
   if (taskNames.length) parts.push(taskNames.join("、"));
-  if (f.roleName) parts.push(`昵称「${f.roleName}」`);
+  if (f.roleNames.length === 1) parts.push(`昵称「${f.roleNames[0]}」`);
+  else if (f.roleNames.length) parts.push(`昵称 ${f.roleNames.length} 个`);
   DATA.metaText = `${parts.join(" · ") || "全部"} · 共 ${DATA.total} 条 · 更新于 ${record.updated_at || "-"}`;
 }
 
@@ -1656,11 +1676,17 @@ nextPageBtn.addEventListener("click", async () => {
     $("#searchBtn").disabled = false;
   }
 });
-["goldMin", "roleName", "school", "priceMin", "priceMax", "ratioMin", "petSlotMin"].forEach((id) => {
+["goldMin", "school", "priceMin", "priceMax", "ratioMin", "petSlotMin"].forEach((id) => {
   const el = $(`#${id}`);
   el.addEventListener("keydown", (e) => {
     if (e.key === "Enter") $("#searchBtn").click();
   });
+});
+$("#roleName")?.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    e.preventDefault();
+    $("#searchBtn").click();
+  }
 });
 
 rolesPanel.addEventListener("change", (e) => {
