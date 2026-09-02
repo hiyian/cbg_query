@@ -461,8 +461,11 @@ def query_roles(
     server_keys = [key for key in (server_keys or []) if key]
     task_keys = [key for key in (task_keys or []) if key]
     batch_key = (batch_key or "").strip() or None
-    if not server_keys and not task_keys and not batch_key:
-        raise ValueError("请至少选择服务器或任务")
+    role_name = (role_name or "").strip() or None
+    if role_name:
+        role_name = "".join(ch for ch in role_name if ch not in "%_\\") or None
+    if not server_keys and not task_keys and not batch_key and not role_name:
+        raise ValueError("请至少选择服务器、任务或输入昵称")
 
     page = max(page, 1)
     page_size = max(min(page_size, 200), 1)

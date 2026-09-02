@@ -10,7 +10,7 @@
 </head>
 <body>
   <header class="header">
-    <p id="meta">请选择服务器或任务后点击「查询」，或用 <code>?task=任务key</code> 直接打开</p>
+    <p id="meta">请选择服务器或任务，也可只输入昵称后查询。分享：<code>?task=任务key</code> 或 <code>?name=昵称</code></p>
   </header>
 
   <section class="filters card" id="filtersCard">
@@ -82,7 +82,7 @@
         </div>
       </label>
       <label>金币（万）≥<input id="goldMin" type="number" placeholder="如 100" step="1"></label>
-      <label>角色<input id="roleName" type="search" placeholder="角色名"></label>
+      <label>昵称<input id="roleName" type="search" placeholder="角色昵称，可单独查" autocomplete="off"></label>
       <label>门派
         <select id="school">
           <option value="">全部</option>

@@ -103,7 +103,9 @@ def list_roles(
     sort: Annotated[str, Query(description="排序字段")] = "material_ratio",
     sort_dir: Annotated[Literal["asc", "desc"], Query()] = "desc",
     gold_min: Annotated[float | None, Query(description="金币下限（万）")] = None,
-    role_name: Annotated[str | None, Query()] = None,
+    role_name: Annotated[str | None, Query(description="角色昵称，模糊匹配")] = None,
+    nickname: Annotated[str | None, Query(description="role_name 别名")] = None,
+    name: Annotated[str | None, Query(description="昵称简写")] = None,
     school: Annotated[str | None, Query()] = None,
     price_min: Annotated[float | None, Query()] = None,
     price_max: Annotated[float | None, Query()] = None,
@@ -131,10 +133,11 @@ def list_roles(
             if key:
                 task_keys.append(key)
     batch_key = (batch or "").strip() or None
-    if not server_keys and not task_keys and not batch_key:
+    role_name_q = (role_name or nickname or name or "").strip() or None
+    if not server_keys and not task_keys and not batch_key and not role_name_q:
         if legacy_all:
             return fetch_roles(server_key=None)
-        raise HTTPException(status_code=400, detail="请至少选择一个服务器或任务")
+        raise HTTPException(status_code=400, detail="请至少选择一个服务器、任务或输入昵称")
 
     if sort not in SORT_FIELDS:
         raise HTTPException(status_code=400, detail=f"不支持的排序字段: {sort}")
@@ -154,7 +157,7 @@ def list_roles(
         sort=sort,
         sort_dir=sort_dir,
         gold_min_wan=gold_min,
-        role_name=role_name,
+        role_name=role_name_q,
         school=school,
         price_min=price_min,
         price_max=price_max,

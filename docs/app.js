@@ -680,17 +680,21 @@ function applyQueryFromUrl() {
   const tasks = splitQueryValues(params, "task", "task_key").map(resolveTaskKey);
   const servers = splitQueryValues(params, "server", "server_key").map(resolveServerKey);
   const area = (params.get("area") || "").trim();
+  const name = (params.get("name") || params.get("nickname") || params.get("role_name") || "").trim();
   const page = Number(params.get("page") || "1");
 
   if (area && (META.areas || []).includes(area)) {
     $("#area").value = area;
+  }
+  if (name && $("#roleName")) {
+    $("#roleName").value = name;
   }
   selectedTaskKeys = new Set(tasks);
   selectedServerKeys = new Set(servers);
   fillTaskOptions();
   fillServerOptions($("#area").value);
   return {
-    auto: tasks.length > 0 || servers.length > 0,
+    auto: tasks.length > 0 || servers.length > 0 || Boolean(name),
     page: Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1,
   };
 }
@@ -701,6 +705,8 @@ function syncQueryToUrl(page = DATA.page) {
   for (const key of getSelectedServerKeys()) params.append("server", key);
   const area = $("#area")?.value;
   if (area) params.set("area", area);
+  const roleName = $("#roleName")?.value.trim();
+  if (roleName) params.set("name", roleName);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   const next = qs ? `${location.pathname}?${qs}` : location.pathname;
@@ -922,7 +928,7 @@ function showRoleDetail(role) {
 
   roleModalBody.innerHTML = `
     <div class="detail-header">
-      <h2>${esc(role.role_name)} · ${esc(role.school)} Lv${esc(role.level)}</h2>
+      <h2>${highlightMatch(role.role_name, getFilters().roleName)} · ${esc(role.school)} Lv${esc(role.level)}</h2>
       <div class="price">¥${esc(role.price)}</div>
       <div class="sub">${esc(role.area_name)} · ${esc(role.server_name)} · ${esc(role.desc_sumup)}</div>
       <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 金币/价格 ${esc(fmtRatio(role))} · 物资比 ${esc(fmtMaterialRatio(role))}</div>
@@ -1057,7 +1063,7 @@ function renderRoleCard(r) {
   return `<article class="role-card role-row" data-role-key="${esc(roleKey(r))}" tabindex="0">
     <div class="role-card-top">
       <div>
-        <div class="role-card-name">${esc(r.role_name)} · ${esc(r.school)} ${esc(r.level ?? "")}</div>
+        <div class="role-card-name">${highlightMatch(r.role_name, getFilters().roleName)} · ${esc(r.school)} ${esc(r.level ?? "")}</div>
         <div class="role-card-sub">${esc(r.area_name || "")} ${esc(r.server_name || "")}</div>
       </div>
       <div class="role-card-price">¥${esc(r.price)}</div>
@@ -1104,7 +1110,7 @@ function renderRoles(roles) {
       <th>大区</th>
       <th>服务器</th>
       <th>任务</th>
-      <th>角色</th>
+      <th>昵称</th>
       <th>门派</th>
       <th class="num sortable" data-sort="level">${sortHeaderHtml("等级", "level")}</th>
       <th class="num sortable" data-sort="current_exp">${sortHeaderHtml("当前经验", "current_exp")}</th>
@@ -1140,7 +1146,7 @@ function renderRoles(roles) {
         <td>${esc(r.area_name)}</td>
         <td>${esc(r.server_name)}</td>
         <td class="task-cell">${fmtCrawlTasks(r)}</td>
-        <td class="name">${esc(r.role_name)}</td>
+        <td class="name">${highlightMatch(r.role_name, getFilters().roleName)}</td>
         <td>${esc(r.school)}</td>
         <td class="num">${esc(r.level ?? "-")}</td>
         <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
@@ -1335,8 +1341,8 @@ async function loadMeta() {
 
 async function fetchRoles(page = DATA.page) {
   const f = getFilters();
-  if (!f.serverKeys.length && !f.taskKeys.length) {
-    throw new Error("请选择服务器或任务");
+  if (!f.serverKeys.length && !f.taskKeys.length && !f.roleName) {
+    throw new Error("请选择服务器、任务，或输入昵称");
   }
 
   const params = new URLSearchParams({
@@ -1394,6 +1400,7 @@ async function fetchRoles(page = DATA.page) {
   const parts = [];
   if (names.length) parts.push(names.join("、"));
   if (taskNames.length) parts.push(taskNames.join("、"));
+  if (f.roleName) parts.push(`昵称「${f.roleName}」`);
   DATA.metaText = `${parts.join(" · ") || "全部"} · 共 ${DATA.total} 条 · 更新于 ${record.updated_at || "-"}`;
 }
 
@@ -1622,9 +1629,9 @@ document.addEventListener("keydown", (e) => {
   if (!roleModal.hidden) closeRoleModal();
 });
 
-rolesPanel.innerHTML = '<div class="empty">请选择服务器或任务后点击「查询」</div>';
-detailsPanel.innerHTML = '<div class="empty">请选择服务器或任务后点击「查询」</div>';
-petsPanel.innerHTML = '<div class="empty">请选择服务器或任务后点击「查询」</div>';
+rolesPanel.innerHTML = '<div class="empty">请选择服务器、任务，或输入昵称后点击「查询」</div>';
+detailsPanel.innerHTML = '<div class="empty">请选择服务器、任务，或输入昵称后点击「查询」</div>';
+petsPanel.innerHTML = '<div class="empty">请选择服务器、任务，或输入昵称后点击「查询」</div>';
 
 prevPageBtn.addEventListener("click", async () => {
   if (DATA.page <= 1) return;
