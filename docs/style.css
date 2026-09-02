@@ -439,6 +439,12 @@ body {
 .key-stat.wuse-shi .key-stat-value { color: #ffb464; }
 .tag.key-item.shendoudou { color: #ff8cc8; border-color: rgba(255, 120, 180, 0.35); }
 .tag.key-item.baoshichui { color: #78c8ff; border-color: rgba(120, 200, 255, 0.35); }
+.tag.key-item.wenshi { color: #e8c36a; border-color: rgba(232, 195, 106, 0.35); }
+.tag.key-item.caiguo { color: #ff8a7a; border-color: rgba(255, 138, 122, 0.35); }
+.tag.key-item.pet-ticket { color: #7ec8ff; border-color: rgba(126, 200, 255, 0.35); }
+.tag.key-item.dinghun { color: #d4b4ff; border-color: rgba(212, 180, 255, 0.35); }
+.tag.key-item.mid-fushi { color: #9ad0c6; border-color: rgba(154, 208, 198, 0.35); }
+.tag.key-item.high-fushi { color: #f0c27a; border-color: rgba(240, 194, 122, 0.35); }
 button {
   cursor: pointer;
   background: var(--accent);
@@ -561,6 +567,12 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
 .list-summary-item.jinliulu .value { color: #8cdc9f; }
 .list-summary-item.jinghua .value { color: #c8a0ff; }
 .list-summary-item.wuse-shi .value { color: #ffb464; }
+.list-summary-item.wenshi .value { color: #e8c36a; }
+.list-summary-item.caiguo .value { color: #ff8a7a; }
+.list-summary-item.pet-ticket .value { color: #7ec8ff; }
+.list-summary-item.dinghun .value { color: #d4b4ff; }
+.list-summary-item.mid-fushi .value { color: #9ad0c6; }
+.list-summary-item.high-fushi .value { color: #f0c27a; }
 
 .roles-table { min-width: 2280px; table-layout: auto; }
 .roles-table td.exp { color: #9ad0ff; font-variant-numeric: tabular-nums; }

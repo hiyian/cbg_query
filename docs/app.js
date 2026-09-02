@@ -34,6 +34,12 @@ const KEY_ITEMS = [
   { key: "jinliulu", label: "金柳露", css: "jinliulu", sub: "" },
   { key: "jinghua", label: "精华", css: "jinghua", sub: "后缀「·精华」（展示用）" },
   { key: "wuse_shi", label: "四色石", css: "wuse-shi", sub: "朱雀/青龙/白虎/玄武" },
+  { key: "wenshi", label: "纹饰", css: "wenshi", sub: "含未鉴定/各级，不含礼包" },
+  { key: "caiguo", label: "彩果", css: "caiguo", sub: "" },
+  { key: "pet_ticket", label: "召唤灵积分券", css: "pet-ticket", sub: "" },
+  { key: "dinghun", label: "定魂珠/金刚石", css: "dinghun", sub: "" },
+  { key: "mid_fushi", label: "中级符纸", css: "mid-fushi", sub: "" },
+  { key: "high_fushi", label: "高级符纸", css: "high-fushi", sub: "" },
 ];
 
 const STONE_NAMES = new Set(["朱雀石", "青龙石", "白虎石", "玄武石"]);
@@ -45,6 +51,12 @@ const DEFAULT_MATERIAL_PRICES = {
   shenshou: 3000000,
   fabaoJinghua: 9000,
   jinliuluMinForRatio: 99,
+  wenshi: 4000,
+  caiguo: 6000,
+  pet_ticket: 2000,
+  dinghun: 10000,
+  mid_fushi: 1600,
+  high_fushi: 7000,
 };
 const MATERIAL_PRICES_STORAGE_KEY = "cbg_material_prices";
 
@@ -69,6 +81,22 @@ function getMaterialPrices() {
   return materialPrices;
 }
 
+function extraItemGold(items, prices) {
+  return (items.wenshi || 0) * prices.wenshi
+    + (items.caiguo || 0) * prices.caiguo
+    + (items.pet_ticket || 0) * prices.pet_ticket
+    + (items.dinghun || 0) * prices.dinghun
+    + (items.mid_fushi || 0) * prices.mid_fushi
+    + (items.high_fushi || 0) * prices.high_fushi;
+}
+
+function roleKeyItems(role) {
+  const computed = computeKeyItems(role);
+  const stored = role._key_items;
+  if (!stored) return computed;
+  return { ...stored, ...computed };
+}
+
 function matchKeyItem(name, item) {
   if (!name) return false;
   if (item.key === "shendoudou") return name === "神兜兜";
@@ -76,6 +104,12 @@ function matchKeyItem(name, item) {
   if (item.key === "jinliulu") return name === "金柳露";
   if (item.key === "jinghua") return name.endsWith("·精华");
   if (item.key === "wuse_shi") return STONE_NAMES.has(name);
+  if (item.key === "wenshi") return name.includes("纹饰") && !name.includes("礼");
+  if (item.key === "caiguo") return name === "彩果";
+  if (item.key === "pet_ticket") return name === "召唤灵积分券";
+  if (item.key === "dinghun") return name === "定魂珠" || name === "金刚石";
+  if (item.key === "mid_fushi") return name === "中级符纸";
+  if (item.key === "high_fushi") return name === "高级符纸";
   return false;
 }
 
@@ -255,7 +289,7 @@ function materialRatio(role) {
   const prices = getMaterialPrices();
   const price = Number(role.price ?? 0);
   if (!price) return null;
-  const items = role._key_items || computeKeyItems(role);
+  const items = roleKeyItems(role);
   const gold = Number(role.金币 ?? 0);
   const jll = items.jinliulu || 0;
   const jllPart = jll >= prices.jinliuluMinForRatio ? jll * prices.jinliulu : 0;
@@ -264,7 +298,8 @@ function materialRatio(role) {
     + (items.baoshichui || 0) * prices.baoshichui
     + jllPart
     + fabaoJinghuaCount(role) * prices.fabaoJinghua
-    + shenshouCount(role) * prices.shenshou;
+    + shenshouCount(role) * prices.shenshou
+    + extraItemGold(items, prices);
   return value / price / 10000;
 }
 
@@ -295,14 +330,15 @@ function fmtMaterialRatioAtPriceBump(role, bump) {
 
 function materialGold(role) {
   const prices = getMaterialPrices();
-  const items = role._key_items || computeKeyItems(role);
+  const items = roleKeyItems(role);
   const gold = Number(role.金币 ?? 0);
   return gold
     + (items.shendoudou || 0) * prices.shendoudou
     + (items.baoshichui || 0) * prices.baoshichui
     + (items.jinliulu || 0) * prices.jinliulu
     + fabaoJinghuaCount(role) * prices.fabaoJinghua
-    + shenshouCount(role) * prices.shenshou;
+    + shenshouCount(role) * prices.shenshou
+    + extraItemGold(items, prices);
 }
 
 function fmtMaterialGold(role) {
@@ -330,7 +366,7 @@ function computeKeyItems(role) {
 }
 
 function keyItemCount(role, key) {
-  const items = role._key_items || computeKeyItems(role);
+  const items = roleKeyItems(role);
   return items[key] || 0;
 }
 
@@ -1491,6 +1527,12 @@ function initMaterialPriceInputs() {
     ["priceJinliulu", "jinliulu"],
     ["priceFabaoJinghua", "fabaoJinghua"],
     ["priceShenshou", "shenshou"],
+    ["priceWenshi", "wenshi"],
+    ["priceCaiguo", "caiguo"],
+    ["pricePetTicket", "pet_ticket"],
+    ["priceDinghun", "dinghun"],
+    ["priceMidFushi", "mid_fushi"],
+    ["priceHighFushi", "high_fushi"],
     ["priceJinliuluMin", "jinliuluMinForRatio"],
   ];
   for (const [id, key] of fields) {

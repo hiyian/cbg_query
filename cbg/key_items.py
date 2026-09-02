@@ -15,6 +15,12 @@ KEY_ITEM_RULES: list[dict[str, Any]] = [
         "label": "四色石",
         "exact": ["朱雀石", "青龙石", "白虎石", "玄武石"],
     },
+    {"key": "wenshi", "label": "纹饰", "contains": "纹饰", "exclude_contains": ["礼"]},
+    {"key": "caiguo", "label": "彩果", "exact": ["彩果"]},
+    {"key": "pet_ticket", "label": "召唤灵积分券", "exact": ["召唤灵积分券"]},
+    {"key": "dinghun", "label": "定魂珠/金刚石", "exact": ["定魂珠", "金刚石"]},
+    {"key": "mid_fushi", "label": "中级符纸", "exact": ["中级符纸"]},
+    {"key": "high_fushi", "label": "高级符纸", "exact": ["高级符纸"]},
 ]
 
 
@@ -68,6 +74,9 @@ def match_key_item(name: str, rule: dict[str, Any]) -> bool:
     name = (name or "").strip()
     if not name:
         return False
+    for part in rule.get("exclude_contains") or []:
+        if part in name:
+            return False
     exact = rule.get("exact")
     if exact and name in exact:
         return True

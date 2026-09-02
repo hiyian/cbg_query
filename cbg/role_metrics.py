@@ -12,7 +12,24 @@ JINLIULU_GOLD = 100
 JINLIULU_MIN_COUNT = 99
 SHENSHOU_GOLD = 3_000_000
 FABAO_JINGHUA_GOLD = 9_000
+WENSHI_GOLD = 4_000
+CAIGUO_GOLD = 6_000
+PET_TICKET_GOLD = 2_000
+DINGHUN_GOLD = 10_000
+MID_FUSHI_GOLD = 1_600
+HIGH_FUSHI_GOLD = 7_000
 SHENSHOU_LIFE = 999999
+
+
+def extra_item_gold(counts: dict[str, int]) -> int:
+    return (
+        counts.get("wenshi", 0) * WENSHI_GOLD
+        + counts.get("caiguo", 0) * CAIGUO_GOLD
+        + counts.get("pet_ticket", 0) * PET_TICKET_GOLD
+        + counts.get("dinghun", 0) * DINGHUN_GOLD
+        + counts.get("mid_fushi", 0) * MID_FUSHI_GOLD
+        + counts.get("high_fushi", 0) * HIGH_FUSHI_GOLD
+    )
 
 
 def pet_slot_count(role: dict[str, Any]) -> int | None:
@@ -92,6 +109,7 @@ def estimated_material_gold(role: dict[str, Any], items: dict[str, int] | None =
         + counts.get("jinliulu", 0) * JINLIULU_GOLD
         + fabao_jh * FABAO_JINGHUA_GOLD
         + shenshou_count(role) * SHENSHOU_GOLD
+        + extra_item_gold(counts)
     )
 
 
@@ -109,6 +127,7 @@ def material_value(role: dict[str, Any], items: dict[str, int] | None = None) ->
         + jll_part
         + fabao_jh * FABAO_JINGHUA_GOLD
         + shenshou_count(role) * SHENSHOU_GOLD
+        + extra_item_gold(counts)
     )
 
 
