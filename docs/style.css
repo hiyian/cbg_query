@@ -610,6 +610,10 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
   text-overflow: clip;
   white-space: nowrap;
 }
+.roles-table td.col-material-bump {
+  color: #9ad0c6;
+  font-weight: 600;
+}
 .roles-table td.price { color: var(--green); font-weight: 600; }
 .roles-table td.gold { color: #f5c842; }
 .roles-table td.xianyu { color: #7ec8ff; font-weight: 600; }
