@@ -144,8 +144,8 @@ def list_roles(
     batch_key = (batch or "").strip() or None
     role_name_q: list[str] = []
     for raw in [*(role_name or []), *(nickname or []), *(name or [])]:
-        for part in str(raw).replace("\r", "\n").replace("，", "\n").replace(",", "\n").replace("；", "\n").replace(";", "\n").replace("、", "\n").split("\n"):
-            item = part.strip()
+        for part in str(raw).replace("\r", "\n").replace("，", "\n").replace(",", "\n").replace("；", "\n").replace(";", "\n").replace("、", "\n").replace("|", "\n").replace("/", "\n").split("\n"):
+            item = part.strip().strip("。．.")
             if item and item not in role_name_q:
                 role_name_q.append(item)
     if not server_keys and not task_keys and not batch_key and not role_name_q:

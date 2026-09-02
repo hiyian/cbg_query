@@ -580,10 +580,19 @@ function serverMatchesSearch(s, query) {
 
 function parseRoleNames(raw) {
   const parts = String(raw ?? "")
-    .split(/[\n\r,，;；、]+/)
-    .map((part) => part.trim())
+    .split(/[\n\r,，;；、|／/]+/)
+    .map((part) => part.replace(/^[、，,;；。．.\s]+|[、，,;；。．.\s]+$/g, "").trim())
     .filter(Boolean);
   return [...new Set(parts)].slice(0, 80);
+}
+
+function normalizeRoleNameInput() {
+  const el = $("#roleName");
+  if (!el) return parseRoleNames("");
+  const names = parseRoleNames(el.value);
+  const next = names.join("\n");
+  if (el.value !== next) el.value = next;
+  return names;
 }
 
 function highlightMatch(text, query) {
@@ -892,7 +901,7 @@ function getFilters() {
     taskKeys: getSelectedTaskKeys(),
     saleStatuses: getSelectedSaleStatuses(),
     goldMin: $("#goldMin").value ? Number($("#goldMin").value) : null,
-    roleNames: parseRoleNames($("#roleName")?.value),
+    roleNames: normalizeRoleNameInput(),
     school: $("#school").value,
     priceMin: $("#priceMin").value ? Number($("#priceMin").value) : null,
     priceMax: $("#priceMax").value ? Number($("#priceMax").value) : null,
@@ -1782,9 +1791,14 @@ nextPageBtn.addEventListener("click", async () => {
 $("#roleName")?.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     e.preventDefault();
+    normalizeRoleNameInput();
     $("#searchBtn").click();
   }
 });
+$("#roleName")?.addEventListener("paste", () => {
+  setTimeout(normalizeRoleNameInput, 0);
+});
+$("#roleName")?.addEventListener("blur", normalizeRoleNameInput);
 
 rolesPanel.addEventListener("change", (e) => {
   if (e.target.id !== "mobileSort") return;
