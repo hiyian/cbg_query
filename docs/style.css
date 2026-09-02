@@ -634,30 +634,24 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
 }
 .roles-table th.col-material-price,
 .roles-table td.col-material-price {
-  min-width: 168px;
-  max-width: 220px;
+  min-width: 88px;
   white-space: nowrap;
-}
-.material-price-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  line-height: 1.15;
 }
 .material-price-value {
   color: #ffd166;
   font-weight: 700;
 }
-.material-price-formula,
-.material-formula-sub {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.material-formula-table {
+  max-width: 420px;
+}
+.material-formula-table td,
+.material-formula-table th {
   white-space: nowrap;
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 400;
+}
+.material-formula-table .formula-total td {
+  border-top: 1px solid var(--border);
+  color: #ffd166;
+  font-weight: 700;
 }
 .roles-table td.col-material-bump {
   color: #9ad0c6;

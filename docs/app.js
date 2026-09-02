@@ -117,28 +117,27 @@ function materialRatioBreakdown(role) {
   const items = roleKeyItems(role);
   const gold = Number(role.金币 ?? 0);
   const terms = [];
-  if (gold) terms.push({ text: `金币${fmtCompactGold(gold)}`, gold });
+  const addTerm = (label, count, unit) => {
+    const amount = count == null ? unit : count * unit;
+    if (!amount) return;
+    const text = count == null
+      ? `${label}${fmtCompactGold(amount)}`
+      : `${label}${count}×${fmtCompactGold(unit)}`;
+    terms.push({ label, count, unit, text, gold: amount });
+  };
+  addTerm("金币", null, gold);
   for (const item of MATERIAL_FORMULA_ITEMS) {
-    const count = items[item.key] || 0;
-    if (!count) continue;
-    const unit = prices[item.priceKey] || 0;
-    terms.push({ text: `${item.label}${count}×${fmtCompactGold(unit)}`, gold: count * unit });
+    addTerm(item.label, items[item.key] || 0, prices[item.priceKey] || 0);
   }
   const jll = items.jinliulu || 0;
   if (jll >= prices.jinliuluMinForRatio) {
-    terms.push({ text: `金柳露${jll}×${prices.jinliulu}`, gold: jll * prices.jinliulu });
+    addTerm("金柳露", jll, prices.jinliulu);
   }
-  const jinghua = fabaoJinghuaCount(role);
-  if (jinghua) {
-    terms.push({ text: `精华${jinghua}×${fmtCompactGold(prices.fabaoJinghua)}`, gold: jinghua * prices.fabaoJinghua });
-  }
-  const shenshou = shenshouCount(role);
-  if (shenshou) {
-    terms.push({ text: `神兽${shenshou}×${fmtCompactGold(prices.shenshou)}`, gold: shenshou * prices.shenshou });
-  }
+  addTerm("精华", fabaoJinghuaCount(role), prices.fabaoJinghua);
+  addTerm("神兽", shenshouCount(role), prices.shenshou);
   const total = terms.reduce((sum, term) => sum + term.gold, 0);
   const formula = terms.length ? terms.map((term) => term.text).join("+") : "0";
-  return { total, yuan: total / 10000, formula: `${formula}=${fmtCompactGold(total)}` };
+  return { terms, total, yuan: total / 10000, formula: `${formula}=${fmtCompactGold(total)}` };
 }
 
 function roleKeyItems(role) {
@@ -363,10 +362,38 @@ function fmtMaterialFormula(role) {
 }
 
 function materialPriceCellHtml(role) {
-  const formula = fmtMaterialFormula(role);
-  return `<div class="material-price-cell" title="${esc(formula)}">
-    <div class="material-price-value">${esc(fmtMaterialPrice(role))}</div>
-    <div class="material-price-formula">${esc(formula)}</div>
+  return `<span class="material-price-value" title="${esc(fmtMaterialFormula(role))}">${esc(fmtMaterialPrice(role))}</span>`;
+}
+
+function renderMaterialFormulaSection(role) {
+  const { terms, total } = materialRatioBreakdown(role);
+  if (!terms.length) {
+    return `<div class="detail-section material-formula-section">
+      <h3>物资公式</h3>
+      <div class="empty">无计入物资</div>
+    </div>`;
+  }
+  const rows = terms.map((term) => {
+    const how = term.count == null ? "—" : `${term.count}×${fmtCompactGold(term.unit)}`;
+    return `<tr>
+      <td>${esc(term.label)}</td>
+      <td class="num">${esc(how)}</td>
+      <td class="num">${esc(fmtCompactGold(term.gold))}</td>
+    </tr>`;
+  }).join("");
+  return `<div class="detail-section material-formula-section">
+    <h3>物资公式</h3>
+    <table class="detail-table material-formula-table">
+      <thead><tr><th>项目</th><th>数量×单价</th><th>金币</th></tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="formula-total">
+          <td>合计</td>
+          <td class="num">${esc(fmtMaterialPrice(role))}</td>
+          <td class="num">${esc(fmtCompactGold(total))}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>`;
 }
 
@@ -987,7 +1014,7 @@ function showRoleDetail(role) {
     ["上架状态", fmtSaleStatus(role)], ["可购买", fmtSaleTime(role)],
     ["金币（万）", fmtGoldWan(role)], ["冻结金币（万）", fmtFreezeWan(role)],
     ["金币/价格", fmtRatio(role)], ["物资比", fmtMaterialRatio(role)],
-    ["物资价格", fmtMaterialPrice(role)], ["物资公式", fmtMaterialFormula(role)],
+    ["物资价格", fmtMaterialPrice(role)],
     ...PRICE_BUMPS.map((item) => [item.label, fmtMaterialRatioAtPriceBump(role, item.bump)]),
     ["物资估算金币", fmtMaterialGold(role)],
     ...KEY_ITEMS.map((item) => [item.label, keyItemCount(role, item.key) || "-"]),
@@ -1011,7 +1038,6 @@ function showRoleDetail(role) {
       <div class="price">¥${esc(role.price)}</div>
       <div class="sub">${esc(role.area_name)} · ${esc(role.server_name)} · ${esc(role.desc_sumup)}</div>
       <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 金币/价格 ${esc(fmtRatio(role))} · 物资比 ${esc(fmtMaterialRatio(role))} · 物资 ${esc(fmtMaterialPrice(role))}</div>
-      <div class="sub material-formula-sub" title="${esc(fmtMaterialFormula(role))}">${esc(fmtMaterialFormula(role))}</div>
       <div class="sub">当前经验 ${esc(fmtExpYi(currentExp(role)))} · 总经验 ${esc(fmtExpYi(totalExp(role)))} · 可使用 ${esc(fmtExpYi(usableExp(role)))}</div>
       <div class="boost-bars detail-boost">${renderBoostBar(boost89(role), "直升89")}${renderBoostBar(boost115(role), "直升115")}</div>
       <div class="sub">${esc(role.ordersn)}</div>
@@ -1025,6 +1051,7 @@ function showRoleDetail(role) {
         </div>
       `).join("")}
     </div>
+    ${renderMaterialFormulaSection(role)}
     <div class="detail-section">
       <h3>装备 / 物品 (${(role.equips || []).length})</h3>
       ${equipGroups.length ? equipGroups.map((g) => `
