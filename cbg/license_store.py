@@ -47,6 +47,7 @@ def _row_key(row: dict[str, Any]) -> dict[str, Any]:
         "note": row.get("note") or "",
         "created_at": _iso(row.get("created_at")),
         "created_by": row.get("created_by") or "",
+        "openid": row.get("openid") or "",
         "machine_count": row.get("machine_count"),
     }
 
@@ -109,6 +110,7 @@ def create_keys(
     minutes: int | None = None,
     note: str = "",
     created_by: str = "admin",
+    openid: str = "",
 ) -> list[dict[str, Any]]:
     if kind not in ("test", "official"):
         raise ValueError("kind 须为 test 或 official")
@@ -127,13 +129,13 @@ def create_keys(
                     cur.execute(
                         """
                         INSERT INTO license_keys
-                          (code, kind, status, expires_at, max_machines, note, created_by)
-                        VALUES (%s, %s, 'unused', %s, %s, %s, %s)
+                          (code, kind, status, expires_at, max_machines, note, created_by, openid)
+                        VALUES (%s, %s, 'unused', %s, %s, %s, %s, %s)
                         ON CONFLICT (code) DO NOTHING
                         RETURNING id, code, kind, status, expires_at, max_machines, note,
-                                  created_at, created_by
+                                  created_at, created_by, openid
                         """,
-                        (code, kind, expires_at, max_machines, note or "", created_by),
+                        (code, kind, expires_at, max_machines, note or "", created_by, (openid or "").strip()),
                     )
                     row = cur.fetchone()
                     if row:
@@ -167,7 +169,7 @@ def list_keys(
             cur.execute(
                 f"""
                 SELECT k.id, k.code, k.kind, k.status, k.expires_at, k.max_machines,
-                       k.note, k.created_at, k.created_by,
+                       k.note, k.created_at, k.created_by, k.openid,
                        (SELECT COUNT(*) FROM license_machines m WHERE m.key_id = k.id) AS machine_count
                 FROM license_keys k
                 {where}
@@ -192,7 +194,7 @@ def get_key(key_id: int) -> dict[str, Any] | None:
             cur.execute(
                 """
                 SELECT id, code, kind, status, expires_at, max_machines, note,
-                       created_at, created_by, session_token
+                       created_at, created_by, session_token, openid
                 FROM license_keys WHERE id = %s
                 """,
                 (key_id,),
@@ -202,6 +204,93 @@ def get_key(key_id: int) -> dict[str, Any] | None:
         return None
     item = _row_key(row)
     item["effective_status"] = _effective_status(row)
+    return item
+
+
+def _parse_expires_at(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = str(value or "").strip()
+        if not text:
+            raise ValueError("请提供到期时间")
+        try:
+            dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("到期时间格式无效") from exc
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def update_expires(
+    key_id: int,
+    *,
+    expires_at: Any = None,
+    days: Any = None,
+    hours: Any = None,
+    minutes: Any = None,
+) -> dict[str, Any]:
+    now = _now()
+    has_abs = expires_at is not None and str(expires_at).strip() != ""
+    has_add = days is not None or hours is not None or minutes is not None
+    if not has_abs and not has_add:
+        raise ValueError("请提供到期时间或延长时长")
+
+    with db_conn(prefer_non_pooling=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, code, kind, status, expires_at, max_machines, note,
+                       created_at, created_by, openid
+                FROM license_keys WHERE id = %s
+                FOR UPDATE
+                """,
+                (key_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise KeyError(key_id)
+
+            if has_abs:
+                new_exp = _parse_expires_at(expires_at)
+            else:
+                delta = resolve_duration(kind=row["kind"], days=days, hours=hours, minutes=minutes)
+                base = row.get("expires_at")
+                if base is not None and base.tzinfo is None:
+                    base = base.replace(tzinfo=timezone.utc)
+                if base is None or base <= now:
+                    base = now
+                new_exp = base + delta
+
+            if new_exp > now + timedelta(days=3650):
+                raise ValueError("到期时间过远（最多约 10 年）")
+
+            new_status = row.get("status") or "unused"
+            if new_status != "revoked":
+                if new_exp <= now:
+                    new_status = "expired"
+                elif new_status == "expired":
+                    cur.execute(
+                        "SELECT COUNT(*) AS n FROM license_machines WHERE key_id = %s",
+                        (key_id,),
+                    )
+                    count_row = cur.fetchone()
+                    new_status = "active" if int((count_row or {}).get("n") or 0) else "unused"
+
+            cur.execute(
+                """
+                UPDATE license_keys
+                SET expires_at = %s, status = %s
+                WHERE id = %s
+                RETURNING id, code, kind, status, expires_at, max_machines, note,
+                          created_at, created_by, openid
+                """,
+                (new_exp, new_status, key_id),
+            )
+            updated = cur.fetchone()
+    item = _row_key(updated)
+    item["effective_status"] = _effective_status(updated, now)
     return item
 
 

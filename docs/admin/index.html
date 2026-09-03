@@ -102,12 +102,29 @@
                   <th>状态</th>
                   <th>到期</th>
                   <th>机器数</th>
+                  <th>OpenID</th>
                   <th>备注</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody id="keysBody"></tbody>
             </table>
+          </div>
+          <div id="expiresBox" class="machines" hidden>
+            <h3>改到期时间 <span id="expiresTitle"></span></h3>
+            <div class="row">
+              <label>到期时间
+                <input id="expiresAt" type="datetime-local" step="60">
+              </label>
+              <button type="button" id="saveExpires" class="primary-btn">保存</button>
+              <button type="button" id="cancelExpires" class="ghost">取消</button>
+            </div>
+            <div class="count-presets">
+              <span class="muted">从当前到期延长：</span>
+              <button type="button" class="link-btn" data-extend-d="1">+1 天</button>
+              <button type="button" class="link-btn" data-extend-d="7">+7 天</button>
+              <button type="button" class="link-btn" data-extend-d="30">+30 天</button>
+            </div>
           </div>
           <div id="machinesBox" class="machines" hidden>
             <h3>机器码记录 <span id="machinesTitle"></span></h3>

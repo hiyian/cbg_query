@@ -203,8 +203,10 @@
                 <td><span class="badge ${esc(st)}">${esc(st)}</span></td>
                 <td>${esc(fmtTime(k.expires_at))}</td>
                 <td>${esc(k.machine_count ?? 0)}${k.max_machines == null ? " / ∞" : " / " + k.max_machines}</td>
+                <td>${k.openid ? `<code>${esc(k.openid)}</code>` : "—"}</td>
                 <td>${esc(k.note)}</td>
                 <td class="ops">
+                  <button type="button" data-expires="${k.id}" data-code="${esc(k.code)}" data-at="${esc(k.expires_at || "")}">改期</button>
                   <button type="button" data-machines="${k.id}" data-code="${esc(k.code)}">机器码</button>
                   <button type="button" data-unbind="${k.id}">解绑</button>
                   <button type="button" class="danger" data-revoke="${k.id}">吊销</button>
@@ -212,8 +214,11 @@
               </tr>`;
             })
             .join("")
-        : '<tr><td colspan="7">暂无卡密</td></tr>';
+        : '<tr><td colspan="8">暂无卡密</td></tr>';
 
+      $("keysBody").querySelectorAll("[data-expires]").forEach((el) =>
+        el.addEventListener("click", () => showExpires(el.dataset.expires, el.dataset.code, el.dataset.at))
+      );
       $("keysBody").querySelectorAll("[data-machines]").forEach((el) =>
         el.addEventListener("click", () => showMachines(el.dataset.machines, el.dataset.code))
       );
@@ -241,9 +246,70 @@
         })
       );
     } catch (e) {
-      $("keysBody").innerHTML = `<tr><td colspan="7">${esc(e.message)}</td></tr>`;
+      $("keysBody").innerHTML = `<tr><td colspan="8">${esc(e.message)}</td></tr>`;
     }
   }
+
+  let expiresKeyId = "";
+
+  function toLocalInput(iso) {
+    const d = iso ? new Date(iso) : new Date();
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function showExpires(keyId, code, iso) {
+    expiresKeyId = keyId;
+    $("expiresBox").hidden = false;
+    $("expiresTitle").textContent = code || keyId;
+    $("expiresAt").value = toLocalInput(iso);
+    $("expiresAt").focus();
+  }
+
+  async function saveExpires(payload) {
+    if (!expiresKeyId) return;
+    try {
+      await req(`/api/admin/keys/${expiresKeyId}/expires`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      $("expiresBox").hidden = true;
+      expiresKeyId = "";
+      loadKeys();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  $("saveExpires").addEventListener("click", () => {
+    const val = $("expiresAt").value;
+    if (!val) {
+      alert("请选择到期时间");
+      return;
+    }
+    const dt = new Date(val);
+    if (Number.isNaN(dt.getTime())) {
+      alert("到期时间无效");
+      return;
+    }
+    void saveExpires({ expires_at: dt.toISOString() });
+  });
+
+  $("cancelExpires").addEventListener("click", () => {
+    $("expiresBox").hidden = true;
+    expiresKeyId = "";
+  });
+
+  document.querySelectorAll("[data-extend-d]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!expiresKeyId) {
+        alert("请先点某一行的「改期」");
+        return;
+      }
+      void saveExpires({ days: Number(btn.dataset.extendD) || 0, hours: 0, minutes: 0 });
+    });
+  });
 
   async function showMachines(keyId, code) {
     try {

@@ -317,6 +317,22 @@ function fmtFreezeWan(role) {
   return wan >= 100 ? Math.round(wan).toLocaleString("zh-CN") : wan.toFixed(1);
 }
 
+function tradeHour(role) {
+  const h = role["交易时间"];
+  if (h == null || h === "") return null;
+  const n = Number(h);
+  return Number.isNaN(n) ? null : n;
+}
+
+function fmtTradeCredit(role) {
+  const level = role["交易信誉"];
+  const hour = tradeHour(role);
+  if (!level && hour == null) return "-";
+  if (level && hour != null) return `${level}·${hour}h`;
+  if (level) return String(level);
+  return `${hour}h`;
+}
+
 function fmtRatio(role) {
   const ratio = goldRatio(role);
   if (ratio == null) return "-";
@@ -1022,6 +1038,7 @@ function showRoleDetail(role) {
     ["大区", role.area_name], ["服务器", role.server_name],
     ["上架状态", fmtSaleStatus(role)], ["可购买", fmtSaleTime(role)],
     ["金币（万）", fmtGoldWan(role)], ["冻结金币（万）", fmtFreezeWan(role)],
+    ["交易信誉", fmtTradeCredit(role)],
     ["金币/价格", fmtRatio(role)], ["物资比", fmtMaterialRatio(role)],
     ["物资价格", fmtMaterialPrice(role)],
     ...PRICE_BUMPS.map((item) => [item.label, fmtMaterialRatioAtPriceBump(role, item.bump)]),
@@ -1111,6 +1128,7 @@ const ROLE_SORT_KEYS = {
   gold_ratio: (role) => goldRatio(role) ?? -1,
   price: (role) => Number(role.price ?? 0),
   gold: (role) => goldWan(role),
+  trade_credit: (role) => tradeHour(role) ?? 999,
   freeze: (role) => freezeGold(role) ?? -1,
   xianyu: (role) => Number(role.仙玉 ?? 0),
   level: (role) => Number(role.level ?? 0),
@@ -1145,6 +1163,7 @@ const MOBILE_SORTS = [
   ["material_price", "物资价格"],
   ["price", "价格"],
   ["gold", "金币"],
+  ["trade_credit", "信誉"],
   ["gold_ratio", "金币/价格"],
   ["usable_exp", "可使用经验"],
   ["boost115", "直升115"],
@@ -1193,6 +1212,7 @@ function renderRoleCard(r) {
     </div>
     <div class="role-card-grid">
       <div class="role-card-kv"><div class="k">金币</div><div class="v gold">${esc(fmtGoldWan(r))}万</div></div>
+      <div class="role-card-kv"><div class="k">信誉</div><div class="v">${esc(fmtTradeCredit(r))}</div></div>
       <div class="role-card-kv"><div class="k">金币/价格</div><div class="v ratio">${esc(fmtRatio(r))}</div></div>
       <div class="role-card-kv"><div class="k">物资比</div><div class="v ratio">${esc(fmtMaterialRatio(r))}</div></div>
       <div class="role-card-kv" title="${esc(fmtMaterialFormula(r))}"><div class="k">物资价格</div><div class="v ratio">${esc(fmtMaterialPrice(r))}</div></div>
@@ -1241,6 +1261,7 @@ function renderRoles(roles) {
       <th>状态</th>
       <th>可购买</th>
       <th class="num sortable" data-sort="gold">${sortHeaderHtml("金币(万)", "gold")}</th>
+      <th class="sortable" data-sort="trade_credit" title="交易信誉等级·交易所需小时">${sortHeaderHtml("信誉", "trade_credit")}</th>
       <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
       <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结(万)", "freeze")}</th>
       <th class="num sortable" data-sort="gold_ratio">${sortHeaderHtml("金币/价格", "gold_ratio")}</th>
@@ -1278,6 +1299,7 @@ function renderRoles(roles) {
         <td><span class="sale-tag ${esc(liveSaleStatus(r) || "unknown")}">${esc(fmtSaleStatus(r))}</span></td>
         <td>${saleTimeHtml(r)}</td>
         <td class="num gold">${esc(fmtGoldWan(r))}</td>
+        <td>${esc(fmtTradeCredit(r))}</td>
         <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
         <td class="num freeze">${esc(fmtFreezeWan(r))}</td>
         <td class="num ratio">${esc(fmtRatio(r))}</td>
