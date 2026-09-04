@@ -22,6 +22,7 @@ from .role_metrics import (
     usable_exp,
     enrich_role,
     estimated_material_gold,
+    frozen_gold_for_role,
     gold_ratio,
     gold_wan,
     key_item_counts,
@@ -365,8 +366,7 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
         if sort == "gold":
             return gold_wan(role)
         if sort == "freeze":
-            value = role.get("冻结金币")
-            return float(value) if value is not None else -1.0
+            return float(frozen_gold_for_role(role))
         if sort == "level":
             return float(role.get("level") or 0)
         if sort == "xianyu":

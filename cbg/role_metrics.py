@@ -83,6 +83,45 @@ def gold_ratio(role: dict[str, Any]) -> float | None:
     return gold_wan(role) / price
 
 
+def calc_frozen_gold_cap(price_yuan: float | int | None, level: int | None) -> int:
+    """成交后将冻结上限 = 售价(元)×1000 + 等级²×100。"""
+    if price_yuan is None or level is None:
+        return 0
+    try:
+        price = float(price_yuan)
+        lv = int(level)
+    except (TypeError, ValueError):
+        return 0
+    return int(price * 1000 + lv * lv * 100)
+
+
+def calc_frozen_gold(
+    igold: int | float | None,
+    *,
+    price_yuan: float | int | None,
+    level: int | None,
+) -> int:
+    """成交后将冻结金币 = min(可用金币, 冻结上限)。"""
+    if igold is None:
+        return 0
+    try:
+        gold = int(igold)
+    except (TypeError, ValueError):
+        return 0
+    cap = calc_frozen_gold_cap(price_yuan, level)
+    if cap <= 0:
+        return gold
+    return min(gold, cap)
+
+
+def frozen_gold_for_role(role: dict[str, Any]) -> int:
+    return calc_frozen_gold(
+        role.get("金币"),
+        price_yuan=role.get("price"),
+        level=role.get("level"),
+    )
+
+
 def fabao_jinghua_count(role: dict[str, Any]) -> int:
     value = role.get("fabao_jinghua")
     if value is not None:
@@ -234,6 +273,7 @@ def enrich_role(role: dict[str, Any]) -> dict[str, Any]:
     role["gold_ratio"] = gold_ratio(role)
     role["material_gold"] = estimated_material_gold(role, items)
     role["material_ratio"] = material_ratio(role, items)
+    role["冻结金币"] = frozen_gold_for_role(role)
     status = resolve_live_sale_status(role.get("sale_status"), role.get("selling_time"))
     role["sale_status"] = status
     if status:

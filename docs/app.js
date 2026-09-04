@@ -303,10 +303,23 @@ function fmtGoldWan(role) {
   return wan >= 100 ? Math.round(wan).toLocaleString("zh-CN") : wan.toFixed(1);
 }
 
+function freezeGoldCap(role) {
+  const price = Number(role.price ?? 0);
+  const level = Number(role.level ?? 0);
+  if (!price || !level) return null;
+  return Math.floor(price * 1000 + level * level * 100);
+}
+
 function freezeGold(role) {
-  const value = role["冻结金币"];
-  if (value == null || value === "") return null;
-  return Number(value);
+  const gold = Number(role.金币 ?? 0);
+  const cap = freezeGoldCap(role);
+  if (cap == null) {
+    const value = role["冻结金币"];
+    if (value == null || value === "") return null;
+    return Number(value);
+  }
+  if (Number.isNaN(gold)) return 0;
+  return Math.min(gold, cap);
 }
 
 function fmtFreezeWan(role) {
@@ -331,6 +344,14 @@ function fmtTradeCredit(role) {
   if (level && hour != null) return `${level}·${hour}h`;
   if (level) return String(level);
   return `${hour}h`;
+}
+
+function fmtFreezeCapWan(role) {
+  const cap = freezeGoldCap(role);
+  if (cap == null) return "-";
+  const wan = cap / 10000;
+  if (!wan) return "0";
+  return wan >= 100 ? Math.round(wan).toLocaleString("zh-CN") : wan.toFixed(1);
 }
 
 function fmtRatio(role) {
@@ -1038,6 +1059,7 @@ function showRoleDetail(role) {
     ["大区", role.area_name], ["服务器", role.server_name],
     ["上架状态", fmtSaleStatus(role)], ["可购买", fmtSaleTime(role)],
     ["金币（万）", fmtGoldWan(role)], ["冻结金币（万）", fmtFreezeWan(role)],
+    ["冻结上限（万）", fmtFreezeCapWan(role)],
     ["交易信誉", fmtTradeCredit(role)],
     ["金币/价格", fmtRatio(role)], ["物资比", fmtMaterialRatio(role)],
     ["物资价格", fmtMaterialPrice(role)],
