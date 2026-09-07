@@ -409,17 +409,10 @@ function fmtMaterialFormula(role) {
   return materialRatioBreakdown(role).formula;
 }
 
-function materialPriceCellHtml(role) {
-  return `<span class="material-price-value" title="${esc(fmtMaterialFormula(role))}">${esc(fmtMaterialPrice(role))}</span>`;
-}
-
-function renderMaterialFormulaSection(role) {
+function materialBreakdownRowsHtml(role) {
   const { terms, total } = materialRatioBreakdown(role);
   if (!terms.length) {
-    return `<div class="detail-section material-formula-section">
-      <h3>物资公式</h3>
-      <div class="empty">无计入物资</div>
-    </div>`;
+    return `<div class="empty">无计入物资</div>`;
   }
   const rows = terms.map((term) => {
     const how = term.count == null ? "—" : `${term.count}×${fmtCompactGold(term.unit)}`;
@@ -429,20 +422,71 @@ function renderMaterialFormulaSection(role) {
       <td class="num">${esc(fmtCompactGold(term.gold))}</td>
     </tr>`;
   }).join("");
+  return `<table class="detail-table material-formula-table">
+    <thead><tr><th>项目</th><th>数量×单价</th><th>金币</th></tr></thead>
+    <tbody>
+      ${rows}
+      <tr class="formula-total">
+        <td>合计</td>
+        <td class="num">${esc(fmtMaterialPrice(role))}</td>
+        <td class="num">${esc(fmtCompactGold(total))}</td>
+      </tr>
+    </tbody>
+  </table>`;
+}
+
+function materialPriceCellHtml(role) {
+  const amount = fmtMaterialPrice(role);
+  return `<span class="material-amount" tabindex="0" aria-label="物资金额 ${amount}，悬停查看明细">
+    <span class="material-price-value">${esc(amount)}</span>
+    <span class="material-tip-src" hidden>${materialBreakdownRowsHtml(role)}</span>
+  </span>`;
+}
+
+function renderMaterialFormulaSection(role) {
   return `<div class="detail-section material-formula-section">
     <h3>物资公式</h3>
-    <table class="detail-table material-formula-table">
-      <thead><tr><th>项目</th><th>数量×单价</th><th>金币</th></tr></thead>
-      <tbody>
-        ${rows}
-        <tr class="formula-total">
-          <td>合计</td>
-          <td class="num">${esc(fmtMaterialPrice(role))}</td>
-          <td class="num">${esc(fmtCompactGold(total))}</td>
-        </tr>
-      </tbody>
-    </table>
+    ${materialBreakdownRowsHtml(role)}
   </div>`;
+}
+
+function ensureMaterialHoverTip() {
+  let tip = document.getElementById("materialHoverTip");
+  if (tip) return tip;
+  tip = document.createElement("div");
+  tip.id = "materialHoverTip";
+  tip.className = "material-hover-tip";
+  tip.hidden = true;
+  document.body.appendChild(tip);
+  return tip;
+}
+
+function hideMaterialHoverTip() {
+  const tip = document.getElementById("materialHoverTip");
+  if (!tip) return;
+  tip.hidden = true;
+  tip.innerHTML = "";
+}
+
+function showMaterialHoverTip(anchor) {
+  const src = anchor.querySelector(".material-tip-src");
+  if (!src) return;
+  const tip = ensureMaterialHoverTip();
+  tip.innerHTML = `<div class="material-hover-tip-title">物资明细</div>${src.innerHTML}`;
+  tip.hidden = false;
+  const rect = anchor.getBoundingClientRect();
+  const tipRect = tip.getBoundingClientRect();
+  let left = rect.right - tipRect.width;
+  let top = rect.bottom + 8;
+  if (left < 8) left = 8;
+  if (left + tipRect.width > window.innerWidth - 8) {
+    left = Math.max(8, window.innerWidth - tipRect.width - 8);
+  }
+  if (top + tipRect.height > window.innerHeight - 8) {
+    top = Math.max(8, rect.top - tipRect.height - 8);
+  }
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
 }
 
 const PRICE_BUMPS = [
@@ -1073,7 +1117,7 @@ function showRoleDetail(role) {
     ["可用上限（万）", fmtUsableCapWan(role)],
     ["交易信誉", fmtTradeCredit(role)],
     ["金币/价格", fmtRatio(role)], ["物资比", fmtMaterialRatio(role)],
-    ["物资价格", fmtMaterialPrice(role)],
+    ["物资金额", fmtMaterialPrice(role)],
     ...PRICE_BUMPS.map((item) => [item.label, fmtMaterialRatioAtPriceBump(role, item.bump)]),
     ["物资估算金币", fmtMaterialGold(role)],
     ...KEY_ITEMS.map((item) => [item.label, keyItemCount(role, item.key) || "-"]),
@@ -1193,7 +1237,7 @@ function sortRoles(roles) {
 
 const MOBILE_SORTS = [
   ["material_ratio", "物资比"],
-  ["material_price", "物资价格"],
+  ["material_price", "物资金额"],
   ["price", "价格"],
   ["gold", "金币"],
   ["trade_credit", "信誉"],
@@ -1248,7 +1292,7 @@ function renderRoleCard(r) {
       <div class="role-card-kv"><div class="k">信誉</div><div class="v">${esc(fmtTradeCredit(r))}</div></div>
       <div class="role-card-kv"><div class="k">金币/价格</div><div class="v ratio">${esc(fmtRatio(r))}</div></div>
       <div class="role-card-kv"><div class="k">物资比</div><div class="v ratio">${esc(fmtMaterialRatio(r))}</div></div>
-      <div class="role-card-kv" title="${esc(fmtMaterialFormula(r))}"><div class="k">物资价格</div><div class="v ratio">${esc(fmtMaterialPrice(r))}</div></div>
+      <div class="role-card-kv"><div class="k">物资金额</div><div class="v ratio">${materialPriceCellHtml(r)}</div></div>
       ${PRICE_BUMPS.map((item) =>
         `<div class="role-card-kv"><div class="k">${esc(item.label)}</div><div class="v ratio">${esc(fmtMaterialRatioAtPriceBump(r, item.bump))}</div></div>`
       ).join("")}
@@ -1299,7 +1343,7 @@ function renderRoles(roles) {
       <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结(万)", "freeze")}</th>
       <th class="num sortable" data-sort="gold_ratio">${sortHeaderHtml("金币/价格", "gold_ratio")}</th>
       <th class="num sortable col-material-ratio" data-sort="material_ratio">${sortHeaderHtml("物资比", "material_ratio")}</th>
-      <th class="num sortable col-material-price" data-sort="material_price" title="物资估值折合人民币，物资比=物资价格/售价">${sortHeaderHtml("物资价格", "material_price")}</th>
+      <th class="num sortable col-material-price" data-sort="material_price" title="物资估值折合人民币；悬停看明细。物资比=物资金额/售价">${sortHeaderHtml("物资金额", "material_price")}</th>
       ${PRICE_BUMPS.map((item) =>
         `<th class="num sortable col-material-ratio col-material-bump" data-sort="${esc(item.key)}">${sortHeaderHtml(item.short, item.key)}</th>`
       ).join("")}
@@ -1865,6 +1909,36 @@ rolesPanel.addEventListener("change", (e) => {
   if (DATA.loaded) $("#searchBtn").click();
 });
 
+rolesPanel.addEventListener("pointerover", (e) => {
+  const el = e.target.closest(".material-amount");
+  if (!el || !rolesPanel.contains(el)) return;
+  if (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
+  showMaterialHoverTip(el);
+});
+
+rolesPanel.addEventListener("pointerout", (e) => {
+  const el = e.target.closest(".material-amount");
+  if (!el || !rolesPanel.contains(el)) return;
+  if (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
+  hideMaterialHoverTip();
+});
+
+rolesPanel.addEventListener("focusin", (e) => {
+  const el = e.target.closest(".material-amount");
+  if (el && rolesPanel.contains(el)) showMaterialHoverTip(el);
+});
+
+rolesPanel.addEventListener("focusout", (e) => {
+  const el = e.target.closest(".material-amount");
+  if (!el || !rolesPanel.contains(el)) return;
+  if (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
+  hideMaterialHoverTip();
+});
+
+rolesPanel.addEventListener("scroll", hideMaterialHoverTip, true);
+window.addEventListener("scroll", hideMaterialHoverTip, true);
+window.addEventListener("resize", hideMaterialHoverTip);
+
 rolesPanel.addEventListener("click", (e) => {
   const sortHeader = e.target.closest("th.sortable");
   if (e.target.id === "mobileSort" || e.target.closest?.("#mobileSort")) {
@@ -1884,7 +1958,10 @@ rolesPanel.addEventListener("click", (e) => {
   const row = e.target.closest(".role-row");
   if (!row) return;
   const role = DATA.roles.find((r) => roleKey(r) === row.dataset.roleKey);
-  if (role) showRoleDetail(role);
+  if (role) {
+    hideMaterialHoverTip();
+    showRoleDetail(role);
+  }
 });
 
 rolesPanel.addEventListener("keydown", (e) => {

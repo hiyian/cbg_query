@@ -634,12 +634,50 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
 }
 .roles-table th.col-material-price,
 .roles-table td.col-material-price {
-  min-width: 88px;
+  min-width: 96px;
   white-space: nowrap;
+  overflow: visible;
+}
+.material-amount {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
 }
 .material-price-value {
   color: #ffd166;
   font-weight: 700;
+  border-bottom: 1px dashed rgba(255, 209, 102, 0.55);
+}
+.material-hover-tip {
+  position: fixed;
+  z-index: 1200;
+  min-width: 220px;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #141a24;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  color: var(--text);
+  font-size: 0.82rem;
+}
+.material-hover-tip-title {
+  margin-bottom: 8px;
+  color: #ffd166;
+  font-weight: 700;
+}
+.material-hover-tip .material-formula-table {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.material-hover-tip .material-formula-table th,
+.material-hover-tip .material-formula-table td {
+  padding: 4px 6px;
+  overflow: visible;
+  text-overflow: clip;
 }
 .material-formula-table {
   max-width: 420px;
