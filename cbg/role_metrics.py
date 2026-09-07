@@ -83,8 +83,8 @@ def gold_ratio(role: dict[str, Any]) -> float | None:
     return gold_wan(role) / price
 
 
-def calc_frozen_gold_cap(price_yuan: float | int | None, level: int | None) -> int:
-    """成交后将冻结上限 = 售价(元)×1000 + 等级²×100。"""
+def calc_usable_gold_cap(price_yuan: float | int | None, level: int | None) -> int:
+    """成交后立刻可用上限 = 售价(元)×1000 + 等级²×100。"""
     if price_yuan is None or level is None:
         return 0
     try:
@@ -95,23 +95,27 @@ def calc_frozen_gold_cap(price_yuan: float | int | None, level: int | None) -> i
     return int(price * 1000 + lv * lv * 100)
 
 
+# 兼容旧名：历史上误称为「冻结上限」，实际是可用上限。
+calc_frozen_gold_cap = calc_usable_gold_cap
+
+
 def calc_frozen_gold(
     igold: int | float | None,
     *,
     price_yuan: float | int | None,
     level: int | None,
 ) -> int:
-    """成交后将冻结金币 = min(可用金币, 冻结上限)。"""
+    """成交后将冻结金币 = max(0, 身上金币 − 可用上限)。金币越多冻得越多。"""
     if igold is None:
         return 0
     try:
         gold = int(igold)
     except (TypeError, ValueError):
         return 0
-    cap = calc_frozen_gold_cap(price_yuan, level)
+    cap = calc_usable_gold_cap(price_yuan, level)
     if cap <= 0:
         return gold
-    return min(gold, cap)
+    return max(0, gold - cap)
 
 
 def frozen_gold_for_role(role: dict[str, Any]) -> int:
