@@ -90,7 +90,7 @@
       </label>
       <label>最低价<input id="priceMin" type="number" placeholder="元"></label>
       <label>最高价<input id="priceMax" type="number" placeholder="元"></label>
-      <label>金币/价格 ≥<input id="ratioMin" type="number" placeholder="如 0.60" step="0.01" min="0"></label>
+      <label>1元金币 ≥（万）<input id="ratioMin" type="number" placeholder="如 0.60" step="0.01" min="0" title="售价每1元至少对应多少万金币"></label>
       <button id="searchBtn" type="button">查询</button>
     </div>
     <div class="row filter-chips-row">
@@ -118,8 +118,9 @@
       </div>
     </div>
     <details class="material-prices" id="materialPricesPanel">
-      <summary>物资折算单价（本地保存，影响物资比 / 估算金币）</summary>
+      <summary>金价 / 物资折算（本地保存，影响估值与明细）</summary>
       <div class="row material-prices-grid">
+        <label title="1元人民币可换多少金币。估值=金币÷金价。默认10000即1元=1万金币">金价（1元=金币）<input id="priceGoldRate" type="number" min="1" step="100"></label>
         <label>神兜兜（金币）<input id="priceShendoudou" type="number" min="0" step="1000"></label>
         <label>宝石锤（金币）<input id="priceBaoshichui" type="number" min="0" step="1000"></label>
         <label>金柳露（金币）<input id="priceJinliulu" type="number" min="0" step="1"></label>
@@ -131,7 +132,7 @@
         <label>定魂珠/金刚石（金币）<input id="priceDinghun" type="number" min="0" step="1000"></label>
         <label>中级符纸（金币）<input id="priceMidFushi" type="number" min="0" step="100"></label>
         <label>高级符纸（金币）<input id="priceHighFushi" type="number" min="0" step="100"></label>
-        <label>物资比金柳露≥<input id="priceJinliuluMin" type="number" min="0" step="1" title="物资比中仅当金柳露数量达到该值才计入"></label>
+        <label>物资计金柳露≥<input id="priceJinliuluMin" type="number" min="0" step="1" title="物资估值中仅当金柳露数量达到该值才计入"></label>
         <button id="resetMaterialPrices" type="button" class="link-btn">恢复默认</button>
       </div>
     </details>

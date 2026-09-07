@@ -118,7 +118,7 @@ def list_roles(
     school: Annotated[str | None, Query()] = None,
     price_min: Annotated[float | None, Query()] = None,
     price_max: Annotated[float | None, Query()] = None,
-    ratio_min: Annotated[float | None, Query(description="金币/价格下限")] = None,
+    ratio_min: Annotated[float | None, Query(description="1元金币下限（万金币/元）")] = None,
     has_shendoudou: Annotated[bool, Query()] = False,
     has_baoshichui: Annotated[bool, Query()] = False,
     pet_slot_min: Annotated[
