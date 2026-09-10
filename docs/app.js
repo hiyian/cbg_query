@@ -796,36 +796,53 @@ function fmtSaleStatus(role) {
 }
 
 function fmtSaleTime(role, nowMs = Date.now()) {
+  const parts = saleTimeParts(role, nowMs);
+  if (!parts.secondary) return parts.primary;
+  return `${parts.primary} · ${parts.secondary}`;
+}
+
+function saleTimeParts(role, nowMs = Date.now()) {
   const status = liveSaleStatus(role, nowMs);
-  if (status === "sold") return "已售出";
-  if (status === "reviewing") return "审核中";
+  if (status === "sold") return { primary: "已售出", secondary: "", counting: false };
+  if (status === "reviewing") return { primary: "审核中", secondary: "", counting: false };
   const ts = sellingTs(role);
   if (!ts) {
-    return status === "fair_show" ? "公示结束时间未收录" : "-";
+    return {
+      primary: status === "fair_show" ? "公示结束时间未收录" : "-",
+      secondary: "",
+      counting: false,
+    };
   }
 
   const dt = new Date(ts * 1000);
   const timeText = `${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
   if (status === "fair_show") {
     const remain = ts - Math.floor(nowMs / 1000);
-    if (remain > 0) return `至 ${timeText} · ${fmtRemain(remain)}后可买`;
-    return `${timeText} 已可买`;
+    if (remain > 0) {
+      return { primary: `至 ${timeText}`, secondary: `${fmtRemain(remain)}后可买`, counting: true };
+    }
+    return { primary: `${timeText} 已可买`, secondary: "", counting: false };
   }
-  if (status === "onsale") return `${timeText} 上架`;
-  return timeText;
+  if (status === "onsale") return { primary: `${timeText} 上架`, secondary: "", counting: false };
+  return { primary: timeText, secondary: "", counting: false };
+}
+
+function saleTimeInnerHtml(role) {
+  const parts = saleTimeParts(role);
+  if (!parts.secondary) return esc(parts.primary);
+  return `<span class="sale-time-main">${esc(parts.primary)}</span><span class="sale-time-sub">${esc(parts.secondary)}</span>`;
 }
 
 function saleTimeHtml(role) {
   const ts = sellingTs(role);
   const status = liveSaleStatus(role);
-  const remain = ts ? ts - Math.floor(Date.now() / 1000) : 0;
-  const counting = status === "fair_show" && remain > 0;
+  const parts = saleTimeParts(role);
   const extras = [
-    counting ? "is-countdown" : "",
+    parts.counting ? "is-countdown" : "",
     status === "fair_show" ? "is-fair" : "",
     status === "sold" ? "is-sold" : "",
   ].filter(Boolean).join(" ");
-  return `<span class="sale-time${extras ? ` ${extras}` : ""}" data-sale-status="${esc(role.sale_status || "")}" data-selling-time="${ts}">${esc(fmtSaleTime(role))}</span>`;
+  return `<span class="sale-time${extras ? ` ${extras}` : ""}" data-sale-status="${esc(role.sale_status || "")}" data-selling-time="${ts || ""}">${saleTimeInnerHtml(role)}</span>`;
 }
 
 let saleTickTimer = null;
@@ -838,9 +855,9 @@ function refreshSaleTimes() {
       selling_time: Number(el.dataset.sellingTime || 0),
     };
     const live = liveSaleStatus(role);
-    const remain = sellingTs(role) ? sellingTs(role) - Math.floor(Date.now() / 1000) : 0;
-    el.textContent = fmtSaleTime(role);
-    el.classList.toggle("is-countdown", live === "fair_show" && remain > 0);
+    const parts = saleTimeParts(role);
+    el.innerHTML = saleTimeInnerHtml(role);
+    el.classList.toggle("is-countdown", parts.counting);
     el.classList.toggle("is-fair", live === "fair_show");
     el.classList.toggle("is-sold", live === "sold");
     const row = el.closest(".role-row, .stat-item");
