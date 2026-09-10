@@ -605,34 +605,24 @@ function keyItemCount(role, key) {
 }
 
 const SHENSHOU_LIFE = 999999;
-const SHENSHOU_NAME_EXACT = new Set([
-  "超级泡泡",
-  "超级九色鹿",
-  "超级赤焰兽",
-  "超级大熊猫",
-  "超级灵龙",
-  "超级灵狐",
-]);
 
 function isShenshouPet(pet) {
+  // 神兽口径：寿命 == 999999（永久）。不按名称 / supersum 推断。
   if (!pet) return false;
-  const life = Number(pet.life);
-  if (life === SHENSHOU_LIFE) return true;
-  if (Number(pet.supersum) === 1) return true;
-  const name = String(pet.name || "").trim();
-  if (!name) return false;
-  if (SHENSHOU_NAME_EXACT.has(name)) return true;
-  if (name.startsWith("超级神") || name.startsWith("超级灵")) return true;
-  return false;
+  return Number(pet.life) === SHENSHOU_LIFE;
 }
 
 function shenshouCount(role) {
-  if (role["神兽数"] != null) return Number(role["神兽数"]) || 0;
-  let n = 0;
-  for (const pet of role.summons || []) {
-    if (isShenshouPet(pet)) n++;
+  const summons = role.summons || [];
+  if (summons.length) {
+    let n = 0;
+    for (const pet of summons) {
+      if (isShenshouPet(pet)) n++;
+    }
+    return n;
   }
-  return n;
+  if (role["神兽数"] != null) return Number(role["神兽数"]) || 0;
+  return 0;
 }
 
 function fmtLife(life) {

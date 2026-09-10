@@ -28,6 +28,7 @@ from .role_metrics import (
     key_item_counts,
     material_ratio,
     pet_slot_count,
+    shenshou_count,
 )
 from .sale_status import resolve_live_sale_status, sale_status_label
 
@@ -385,7 +386,7 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
             value = pet_slot_count(role)
             return float(value) if value is not None else -1.0
         if sort == "shenshou":
-            return float(role.get("神兽数") or 0)
+            return float(shenshou_count(role))
         if sort in item_sort_keys:
             return float(items.get(sort, 0))
         return material_ratio(role, items) or -1.0
