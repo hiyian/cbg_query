@@ -73,6 +73,17 @@
             <span class="multiselect-arrow" aria-hidden="true">▾</span>
           </button>
           <div id="taskMultiPanel" class="multiselect-panel" hidden>
+            <div class="multiselect-search-wrap">
+              <input
+                id="taskSearch"
+                type="search"
+                class="multiselect-search"
+                placeholder="搜索任务（中文 / key）"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="搜索任务"
+              />
+            </div>
             <div class="multiselect-toolbar">
               <button id="selectAllTasks" type="button" class="link-btn">全选</button>
               <button id="clearTasks" type="button" class="link-btn">清空</button>

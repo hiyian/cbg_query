@@ -999,16 +999,61 @@ function setTaskMultiOpen(open) {
   panel.hidden = !open;
   trigger.setAttribute("aria-expanded", open ? "true" : "false");
   $("#taskMulti")?.classList.toggle("open", open);
+  if (open) {
+    requestAnimationFrame(() => {
+      const input = $("#taskSearch");
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  } else {
+    const input = $("#taskSearch");
+    if (input) input.value = "";
+    fillTaskOptions();
+  }
+}
+
+function normalizeTaskSearch(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[\s·\-_.]/g, "");
+}
+
+function taskHaystack(t) {
+  return [t.label, t.key]
+    .map(normalizeTaskSearch)
+    .join("|");
+}
+
+function taskMatchesSearch(t, query) {
+  const q = (query || "").trim();
+  if (!q) return true;
+  const nq = normalizeTaskSearch(q);
+  if (nq && taskHaystack(t).includes(nq)) return true;
+  const label = String(t.label || "");
+  const key = String(t.key || "");
+  if (label.includes(q) || key.includes(q)) return true;
+  return false;
+}
+
+function getTaskSearchQuery() {
+  return ($("#taskSearch")?.value || "").trim();
 }
 
 function fillTaskOptions() {
   const el = $("#taskList");
   if (!el) return;
-  const list = [...(META.tasks || [])].sort((a, b) =>
-    String(a.label || a.key).localeCompare(String(b.label || b.key), "zh-CN"),
-  );
+  const query = getTaskSearchQuery();
+  const list = [...(META.tasks || [])]
+    .filter((t) => taskMatchesSearch(t, query))
+    .sort((a, b) =>
+      String(a.label || a.key).localeCompare(String(b.label || b.key), "zh-CN"),
+    );
   if (!list.length) {
-    el.innerHTML = '<span class="empty-hint">暂无任务标记</span>';
+    el.innerHTML = query
+      ? '<span class="multiselect-empty">无匹配任务</span>'
+      : '<span class="empty-hint">暂无任务标记</span>';
     updateTaskMultiLabel();
     return;
   }
@@ -1023,7 +1068,7 @@ function fillTaskOptions() {
       aria-selected="${active ? "true" : "false"}"
     >
       <span class="option-main">
-        <span>${esc(t.label || t.key)}</span>
+        <span>${highlightMatch(t.label || t.key, query)}</span>
         <span class="option-sub">${esc(t.key)}${esc(count)}</span>
       </span>
       <span class="multiselect-check" aria-hidden="true">✓</span>
@@ -1181,6 +1226,7 @@ function showRoleDetail(role) {
     ["银币", role.银币], ["仙玉", role.仙玉],
     ["当前经验", fmtExpYi(currentExp(role))], ["总经验", fmtExpYi(totalExp(role))],
     ["可使用经验", fmtExpYi(usableExp(role))],
+    ["潜能果", role["潜能果"]], ["乾元丹", role["乾元丹"]], ["经脉点数", role["经脉点数"]],
     ["人物评分", role["人物评分"]], ["装备评分", role["装备评分"]],
     ["召唤灵评分", role["召唤灵评分"]], ["修炼评分", role.修炼评分],
     ["宠物格子", role["宠物格子数"]], ["神兽数", shenshouCount(role)],
@@ -1246,7 +1292,7 @@ function closeRoleModal() {
 const DESC_SORT_KEYS = new Set([
   "material_ratio", "material_ratio_p10", "material_ratio_p20", "material_ratio_p50",
   "material_price", "material_gold", "gold_ratio", "gold_value", "gold", "freeze", "price", "xianyu",
-  "pet_slot", "shenshou", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi",
+  "pet_slot", "shenshou", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi", "qiannengguo", "jingmai", "qianyuan",
   "current_exp", "total_exp", "usable_exp", "boost89", "boost115",
 ]);
 
@@ -1277,6 +1323,9 @@ const ROLE_SORT_KEYS = {
   usable_exp: (role) => usableExp(role) ?? -1,
   boost89: (role) => boost89(role)?.pct ?? -1,
   boost115: (role) => boost115(role)?.pct ?? -1,
+  qiannengguo: (role) => Number(role["潜能果"] ?? 0),
+  jingmai: (role) => Number(role["经脉点数"] ?? 0),
+  qianyuan: (role) => Number(role["乾元丹"] ?? 0),
 };
 
 function sortRoles(roles) {
@@ -1305,6 +1354,9 @@ const MOBILE_SORTS = [
   ["level", "等级"],
   ["xianyu", "仙玉"],
   ["shenshou", "神兽"],
+  ["qiannengguo", "潜能果"],
+  ["jingmai", "经脉"],
+  ["qianyuan", "乾元丹"],
 ];
 
 function isMobileLayout() {
@@ -1355,6 +1407,9 @@ function renderRoleCard(r) {
         `<div class="role-card-kv"><div class="k">${esc(item.label)}</div><div class="v ratio">${esc(fmtMaterialRatioAtPriceBump(r, item.bump))}</div></div>`
       ).join("")}
       <div class="role-card-kv"><div class="k">可使用经验</div><div class="v">${esc(fmtExpYi(usableExp(r)))}</div></div>
+      <div class="role-card-kv"><div class="k">潜能果</div><div class="v">${esc(fmtNum(r["潜能果"]))}</div></div>
+      <div class="role-card-kv"><div class="k">乾元丹</div><div class="v">${esc(fmtNum(r["乾元丹"]))}</div></div>
+      <div class="role-card-kv"><div class="k">经脉</div><div class="v">${esc(fmtNum(r["经脉点数"]))}</div></div>
     </div>
     <div class="boost-bars">${renderBoostBar(boost89(r), "89")}${renderBoostBar(boost115(r), "115")}</div>
     ${itemTags || shenshou ? `<div class="role-card-items">${itemTags}${shenshou ? `<span class="tag key-item">${esc(`神兽 ${shenshou}`)}</span>` : ""}</div>` : ""}
@@ -1414,6 +1469,9 @@ function renderRoles(roles) {
       <th class="num sortable" data-sort="wuse_shi">${sortHeaderHtml("四色石", "wuse_shi")}</th>
       <th class="num sortable" data-sort="pet_slot">${sortHeaderHtml("宠物格子", "pet_slot")}</th>
       <th class="num sortable col-shenshou" data-sort="shenshou">${sortHeaderHtml("神兽", "shenshou")}</th>
+      <th class="num sortable" data-sort="qiannengguo" title="潜能果使用数量">${sortHeaderHtml("潜能果", "qiannengguo")}</th>
+      <th class="num sortable" data-sort="qianyuan" title="拥有乾元丹数量">${sortHeaderHtml("乾元丹", "qianyuan")}</th>
+      <th class="num sortable" data-sort="jingmai" title="当前经脉方案已激活点数">${sortHeaderHtml("经脉", "jingmai")}</th>
       <th class="num">人物评分</th>
       <th class="num">装备评分</th>
       <th class="num">召唤灵评分</th>
@@ -1453,6 +1511,9 @@ function renderRoles(roles) {
         <td class="num item-wuse-shi">${esc(keyItemCount(r, "wuse_shi") || "-")}</td>
         <td class="num">${esc(r["宠物格子数"] ?? "-")}</td>
         <td class="num shenshou col-shenshou">${esc(shenshouCount(r) || "-")}</td>
+        <td class="num">${esc(fmtNum(r["潜能果"]))}</td>
+        <td class="num">${esc(fmtNum(r["乾元丹"]))}</td>
+        <td class="num">${esc(fmtNum(r["经脉点数"]))}</td>
         <td class="num">${esc(fmtNum(r["人物评分"]))}</td>
         <td class="num">${esc(fmtNum(r["装备评分"]))}</td>
         <td class="num">${esc(fmtNum(r["召唤灵评分"]))}</td>
@@ -1862,6 +1923,19 @@ $("#taskMultiTrigger")?.addEventListener("click", () => {
   setServerMultiOpen(false);
 });
 
+$("#taskSearch")?.addEventListener("input", () => {
+  fillTaskOptions();
+});
+
+$("#taskSearch")?.addEventListener("keydown", (e) => {
+  e.stopPropagation();
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const first = $("#taskList")?.querySelector(".multiselect-option");
+    if (first) first.click();
+  }
+});
+
 $("#taskList")?.addEventListener("click", (e) => {
   const option = e.target.closest(".multiselect-option");
   if (!option) return;
@@ -1879,7 +1953,9 @@ $("#taskList")?.addEventListener("click", (e) => {
 });
 
 $("#selectAllTasks")?.addEventListener("click", () => {
-  (META.tasks || []).forEach((t) => selectedTaskKeys.add(t.key));
+  $("#taskList")?.querySelectorAll(".multiselect-option").forEach((option) => {
+    selectedTaskKeys.add(option.dataset.key);
+  });
   fillTaskOptions();
 });
 
