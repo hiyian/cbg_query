@@ -49,9 +49,9 @@ const DEFAULT_MATERIAL_PRICES = {
   goldRate: DEFAULT_GOLD_RATE,
   shendoudou: 30000,
   baoshichui: 25000,
-  jinliulu: 100,
+  jinliulu: 50,
   shenshou: 3000000,
-  fabaoJinghua: 9000,
+  fabaoJinghua: 7000,
   jinliuluMinForRatio: 99,
   wenshi: 4000,
   caiguo: 6000,
@@ -605,12 +605,32 @@ function keyItemCount(role, key) {
 }
 
 const SHENSHOU_LIFE = 999999;
+const SHENSHOU_NAME_EXACT = new Set([
+  "超级泡泡",
+  "超级九色鹿",
+  "超级赤焰兽",
+  "超级大熊猫",
+  "超级灵龙",
+  "超级灵狐",
+]);
+
+function isShenshouPet(pet) {
+  if (!pet) return false;
+  const life = Number(pet.life);
+  if (life === SHENSHOU_LIFE) return true;
+  if (Number(pet.supersum) === 1) return true;
+  const name = String(pet.name || "").trim();
+  if (!name) return false;
+  if (SHENSHOU_NAME_EXACT.has(name)) return true;
+  if (name.startsWith("超级神") || name.startsWith("超级灵")) return true;
+  return false;
+}
 
 function shenshouCount(role) {
   if (role["神兽数"] != null) return Number(role["神兽数"]) || 0;
   let n = 0;
   for (const pet of role.summons || []) {
-    if (Number(pet.life) === SHENSHOU_LIFE) n++;
+    if (isShenshouPet(pet)) n++;
   }
   return n;
 }
@@ -1215,7 +1235,7 @@ function renderPetRow(pet) {
     pet.growth != null ? `成长${pet.growth}` : "",
     pet.fighting ? "参战" : "",
   ].filter(Boolean).join(" · ");
-  const isShenshou = Number(pet.life) === SHENSHOU_LIFE;
+  const isShenshou = isShenshouPet(pet);
   return `<tr>
     <td data-label="名称">${esc(pet.name)}${isShenshou ? ' <span class="shenshou-tag">神兽</span>' : ""}</td>
     <td data-label="等级">${esc(pet.level ?? "-")}</td>

@@ -8,10 +8,10 @@ from .sale_status import format_sale_time, resolve_live_sale_status, sale_status
 
 SHENDOUDOU_GOLD = 30_000
 BAOSHICHUI_GOLD = 25_000
-JINLIULU_GOLD = 100
+JINLIULU_GOLD = 50
 JINLIULU_MIN_COUNT = 99
 SHENSHOU_GOLD = 3_000_000
-FABAO_JINGHUA_GOLD = 9_000
+FABAO_JINGHUA_GOLD = 7_000
 WENSHI_GOLD = 4_000
 CAIGUO_GOLD = 6_000
 PET_TICKET_GOLD = 2_000
@@ -19,6 +19,40 @@ DINGHUN_GOLD = 10_000
 MID_FUSHI_GOLD = 1_600
 HIGH_FUSHI_GOLD = 7_000
 SHENSHOU_LIFE = 999999
+_SHENSHOU_NAME_EXACT = frozenset(
+    {
+        "超级泡泡",
+        "超级九色鹿",
+        "超级赤焰兽",
+        "超级大熊猫",
+        "超级灵龙",
+        "超级灵狐",
+    }
+)
+
+
+def is_shenshou_pet(pet: dict[str, Any] | None) -> bool:
+    if not isinstance(pet, dict):
+        return False
+    life = pet.get("life")
+    try:
+        if life is not None and int(life) == SHENSHOU_LIFE:
+            return True
+    except (TypeError, ValueError):
+        pass
+    try:
+        if int(pet.get("supersum") or 0) == 1:
+            return True
+    except (TypeError, ValueError):
+        pass
+    name = str(pet.get("name") or "").strip()
+    if not name:
+        return False
+    if name in _SHENSHOU_NAME_EXACT:
+        return True
+    if name.startswith(("超级神", "超级灵")):
+        return True
+    return False
 
 
 def extra_item_gold(counts: dict[str, int]) -> int:
@@ -54,22 +88,14 @@ def pet_slot_from_profile(profile: dict[str, Any]) -> int | None:
 
 
 def shenshou_count(role: dict[str, Any]) -> int:
-    """神兽（寿命 999999 的召唤灵）数量。优先取抓取时算好的字段。"""
+    """神兽数量。优先取抓取字段；否则按寿命 / supersum / 名称识别。"""
     value = role.get("神兽数")
     if value is not None:
         try:
             return int(value)
         except (TypeError, ValueError):
             pass
-    count = 0
-    for pet in role.get("summons") or []:
-        life = pet.get("life")
-        try:
-            if life is not None and int(life) == SHENSHOU_LIFE:
-                count += 1
-        except (TypeError, ValueError):
-            continue
-    return count
+    return sum(1 for pet in role.get("summons") or [] if is_shenshou_pet(pet))
 
 
 def gold_wan(role: dict[str, Any]) -> float:
