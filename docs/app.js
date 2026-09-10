@@ -1688,11 +1688,76 @@ function apiUrl(path) {
   return base ? `${base}${p}` : p;
 }
 
+const SITE_VID_KEY = "cbg_site_vid";
+
+function siteVisitorId() {
+  try {
+    let id = localStorage.getItem(SITE_VID_KEY);
+    if (!id) {
+      id = (crypto.randomUUID && crypto.randomUUID())
+        || `v_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(SITE_VID_KEY, id);
+    }
+    return id;
+  } catch (_) {
+    return `v_${Date.now().toString(36)}`;
+  }
+}
+
+function trackSite(event, props = {}) {
+  const body = {
+    events: [
+      {
+        event,
+        visitor_id: siteVisitorId(),
+        occurred_at: new Date().toISOString(),
+        props,
+      },
+    ],
+  };
+  const payload = JSON.stringify(body);
+  try {
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: "application/json" });
+      if (navigator.sendBeacon(apiUrl("/api/site/track"), blob)) return;
+    }
+  } catch (_) {}
+  fetch(apiUrl("/api/site/track"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: payload,
+    keepalive: true,
+  }).catch(() => {});
+}
+
+function trackSitePageView() {
+  trackSite("site_page_view", {
+    path: `${location.pathname}${location.search}`,
+    referrer: document.referrer || "",
+    title: document.title || "",
+  });
+}
+
+function trackSiteSearch(filters, extra = {}) {
+  const bits = [];
+  if (filters.taskKeys?.length) bits.push(`task=${filters.taskKeys.slice(0, 3).join(",")}`);
+  if (filters.serverKeys?.length) bits.push(`server=${filters.serverKeys.slice(0, 3).join(",")}`);
+  if (filters.roleNames?.length) bits.push(`name=${filters.roleNames.slice(0, 3).join(",")}`);
+  if (filters.school) bits.push(`school=${filters.school}`);
+  trackSite("site_search", {
+    query: bits.join(" · ") || "(empty)",
+    path: `${location.pathname}${location.search}`,
+    total: extra.total ?? null,
+    page: extra.page ?? null,
+  });
+}
+
 async function loadMeta() {
   const resp = await fetch(apiUrl("/api/meta"));
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   META = await resp.json();
   buildFilterOptions();
+  trackSitePageView();
   const boot = applyQueryFromUrl();
   if (boot.auto) {
     await handleSearchAtPage(boot.page);
@@ -1783,6 +1848,9 @@ async function runSearch(page = 1) {
   await fetchRoles(page);
   syncQueryToUrl(page);
   render();
+  try {
+    trackSiteSearch(getFilters(), { total: DATA.total, page: DATA.page });
+  } catch (_) {}
 }
 
 async function handleSearchAtPage(page) {

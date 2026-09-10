@@ -85,6 +85,7 @@
       if (btn.dataset.tab === "events") loadEvents();
       if (btn.dataset.tab === "feedbacks") loadFeedbacks();
       if (btn.dataset.tab === "keys") loadKeys();
+      if (btn.dataset.tab === "traffic") loadTraffic();
     });
   });
 
@@ -359,6 +360,92 @@
         : '<tr><td colspan="5">暂无数据</td></tr>';
     } catch (e) {
       $("eventsBody").innerHTML = `<tr><td colspan="5">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  $("refreshTraffic")?.addEventListener("click", loadTraffic);
+  $("trafficDays")?.addEventListener("change", loadTraffic);
+
+  function renderTrafficChart(daily) {
+    const el = $("trafficChart");
+    if (!el) return;
+    const max = Math.max(1, ...daily.map((d) => Number(d.pv) || 0));
+    el.innerHTML = daily
+      .map((d) => {
+        const pv = Number(d.pv) || 0;
+        const uv = Number(d.uv) || 0;
+        const h = Math.max(4, Math.round((pv / max) * 100));
+        const label = String(d.day || "").slice(5);
+        return `<div class="traffic-bar" title="${esc(d.day)} PV ${pv} / UV ${uv}">
+          <div class="traffic-bar-fill" style="height:${h}%"></div>
+          <div class="traffic-bar-label">${esc(label)}</div>
+          <div class="traffic-bar-val">${pv}</div>
+        </div>`;
+      })
+      .join("");
+    $("trafficChartLegend").textContent = `峰值 PV ${max}`;
+  }
+
+  async function loadTraffic() {
+    const days = Number($("trafficDays")?.value || 14);
+    try {
+      const data = await req(`/api/admin/traffic?days=${days}`);
+      const t = data.totals || {};
+      $("trafficCards").innerHTML = [
+        ["今日 PV", t.today_pv],
+        ["今日 UV", t.today_uv],
+        ["今日搜索", t.today_search],
+        ["7 日 PV", t.d7_pv],
+        ["7 日 UV", t.d7_uv],
+        ["7 日搜索", t.d7_search],
+        ["30 日 PV", t.d30_pv],
+        ["30 日 UV", t.d30_uv],
+      ]
+        .map(
+          ([label, value]) => `<div class="traffic-card">
+            <div class="k">${esc(label)}</div>
+            <div class="v">${esc(value ?? 0)}</div>
+          </div>`
+        )
+        .join("");
+      renderTrafficChart(data.daily || []);
+      const paths = data.top_paths || [];
+      $("trafficPathsBody").innerHTML = paths.length
+        ? paths
+            .map((r) => `<tr><td><code>${esc(r.path)}</code></td><td>${esc(r.count)}</td></tr>`)
+            .join("")
+        : '<tr><td colspan="2">暂无</td></tr>';
+      const queries = data.top_queries || [];
+      $("trafficQueriesBody").innerHTML = queries.length
+        ? queries
+            .map((r) => `<tr><td>${esc(r.query)}</td><td>${esc(r.count)}</td></tr>`)
+            .join("")
+        : '<tr><td colspan="2">暂无</td></tr>';
+      const recent = data.recent || [];
+      $("trafficRecentBody").innerHTML = recent.length
+        ? recent
+            .map((ev) => {
+              const props = ev.props || {};
+              const detail =
+                ev.event === "site_search"
+                  ? props.query || JSON.stringify(props)
+                  : [props.path, props.referrer].filter(Boolean).join(" · ") ||
+                    JSON.stringify(props);
+              return `<tr>
+                <td>${esc(fmtTime(ev.occurred_at))}</td>
+                <td><code>${esc(ev.event)}</code></td>
+                <td><code>${esc((ev.visitor_id || "").slice(0, 10))}</code></td>
+                <td>${esc(detail)}</td>
+              </tr>`;
+            })
+            .join("")
+        : '<tr><td colspan="4">暂无访问记录。部署后打开查询站即可开始累计。</td></tr>';
+    } catch (e) {
+      $("trafficCards").innerHTML = `<div class="error">${esc(e.message)}</div>`;
+      $("trafficChart").innerHTML = "";
+      $("trafficPathsBody").innerHTML = "";
+      $("trafficQueriesBody").innerHTML = "";
+      $("trafficRecentBody").innerHTML = `<tr><td colspan="4">${esc(e.message)}</td></tr>`;
     }
   }
 

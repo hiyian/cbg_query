@@ -328,6 +328,37 @@ def admin_events(
     }
 
 
+@app.post("/api/site/track")
+def site_track(payload: Annotated[dict[str, Any], Body(...)]) -> dict:
+    """网站匿名埋点（不校验 APP_ID）。"""
+    events = payload.get("events") or []
+    if not isinstance(events, list):
+        raise HTTPException(status_code=400, detail="events 须为数组")
+    cleaned: list[dict[str, Any]] = []
+    for ev in events[:20]:
+        if not isinstance(ev, dict):
+            continue
+        name = str(ev.get("event") or "").strip()
+        if not name.startswith("site_"):
+            continue
+        cleaned.append(
+            {
+                "event": name[:64],
+                "machine_id": str(ev.get("visitor_id") or ev.get("machine_id") or "")[:128],
+                "occurred_at": ev.get("occurred_at"),
+                "props": ev.get("props") if isinstance(ev.get("props"), dict) else {},
+                "license_key_id": None,
+            }
+        )
+    n = license_store.insert_events(cleaned)
+    return {"ok": True, "inserted": n}
+
+
+@app.get("/api/admin/traffic", dependencies=[Depends(_require_admin)])
+def admin_traffic(days: Annotated[int, Query(ge=1, le=90)] = 14) -> dict:
+    return license_store.traffic_summary(days=days)
+
+
 @app.get("/api/admin/feedbacks", dependencies=[Depends(_require_admin)])
 def admin_feedbacks(limit: Annotated[int, Query(ge=1, le=500)] = 100) -> dict:
     return {"feedbacks": license_store.list_feedbacks(limit=limit)}

@@ -647,6 +647,179 @@ def list_events(
     ]
 
 
+def traffic_summary(*, days: int = 14) -> dict[str, Any]:
+    """网站流量汇总（event 以 site_ 开头）。"""
+    days = max(1, min(int(days), 90))
+    with db_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                  COUNT(*) FILTER (
+                    WHERE occurred_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai')
+                      AT TIME ZONE 'Asia/Shanghai'
+                  ) AS today_pv,
+                  COUNT(DISTINCT machine_id) FILTER (
+                    WHERE occurred_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai')
+                      AT TIME ZONE 'Asia/Shanghai'
+                      AND machine_id <> ''
+                  ) AS today_uv,
+                  COUNT(*) FILTER (
+                    WHERE occurred_at >= NOW() - INTERVAL '7 days'
+                  ) AS d7_pv,
+                  COUNT(DISTINCT machine_id) FILTER (
+                    WHERE occurred_at >= NOW() - INTERVAL '7 days'
+                      AND machine_id <> ''
+                  ) AS d7_uv,
+                  COUNT(*) FILTER (
+                    WHERE occurred_at >= NOW() - INTERVAL '30 days'
+                  ) AS d30_pv,
+                  COUNT(DISTINCT machine_id) FILTER (
+                    WHERE occurred_at >= NOW() - INTERVAL '30 days'
+                      AND machine_id <> ''
+                  ) AS d30_uv,
+                  COUNT(*) FILTER (
+                    WHERE event = 'site_search'
+                      AND occurred_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai')
+                        AT TIME ZONE 'Asia/Shanghai'
+                  ) AS today_search,
+                  COUNT(*) FILTER (
+                    WHERE event = 'site_search'
+                      AND occurred_at >= NOW() - INTERVAL '7 days'
+                  ) AS d7_search
+                FROM analytics_events
+                WHERE left(event, 5) = 'site_'
+                  AND occurred_at >= NOW() - INTERVAL '30 days'
+                """
+            )
+            totals = dict(cur.fetchone() or {})
+
+            cur.execute(
+                """
+                SELECT
+                  to_char(
+                    (occurred_at AT TIME ZONE 'Asia/Shanghai')::date,
+                    'YYYY-MM-DD'
+                  ) AS day,
+                  COUNT(*) AS pv,
+                  COUNT(DISTINCT NULLIF(machine_id, '')) AS uv,
+                  COUNT(*) FILTER (WHERE event = 'site_search') AS searches
+                FROM analytics_events
+                WHERE left(event, 5) = 'site_'
+                  AND (occurred_at AT TIME ZONE 'Asia/Shanghai')::date
+                      >= (NOW() AT TIME ZONE 'Asia/Shanghai')::date - (%s::int - 1)
+                GROUP BY 1
+                ORDER BY 1
+                """,
+                (days,),
+            )
+            daily_rows = cur.fetchall() or []
+
+            cur.execute(
+                """
+                SELECT event, COUNT(*) AS c
+                FROM analytics_events
+                WHERE left(event, 5) = 'site_'
+                  AND occurred_at >= NOW() - make_interval(days => %s)
+                GROUP BY 1
+                ORDER BY c DESC
+                """,
+                (days,),
+            )
+            by_event = [{"event": r["event"], "count": int(r["c"])} for r in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT
+                  COALESCE(props->>'path', '/') AS path,
+                  COUNT(*) AS c
+                FROM analytics_events
+                WHERE event = 'site_page_view'
+                  AND occurred_at >= NOW() - make_interval(days => %s)
+                GROUP BY 1
+                ORDER BY c DESC
+                LIMIT 12
+                """,
+                (days,),
+            )
+            top_paths = [{"path": r["path"], "count": int(r["c"])} for r in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT
+                  COALESCE(NULLIF(props->>'query', ''), '(空)') AS query,
+                  COUNT(*) AS c
+                FROM analytics_events
+                WHERE event = 'site_search'
+                  AND occurred_at >= NOW() - make_interval(days => %s)
+                GROUP BY 1
+                ORDER BY c DESC
+                LIMIT 12
+                """,
+                (days,),
+            )
+            top_queries = [{"query": r["query"], "count": int(r["c"])} for r in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT id, occurred_at, machine_id, event, props
+                FROM analytics_events
+                WHERE left(event, 5) = 'site_'
+                ORDER BY occurred_at DESC
+                LIMIT 40
+                """
+            )
+            recent = [
+                {
+                    "id": r["id"],
+                    "occurred_at": _iso(r.get("occurred_at")),
+                    "visitor_id": r.get("machine_id") or "",
+                    "event": r["event"],
+                    "props": r.get("props") or {},
+                }
+                for r in cur.fetchall()
+            ]
+
+    # fill missing days
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    by_day = {r["day"]: r for r in daily_rows}
+    daily = []
+    for i in range(days - 1, -1, -1):
+        d = today - timedelta(days=i)
+        key = d.isoformat()
+        row = by_day.get(key)
+        daily.append(
+            {
+                "day": key,
+                "pv": int(row["pv"]) if row else 0,
+                "uv": int(row["uv"]) if row else 0,
+                "searches": int(row["searches"]) if row else 0,
+            }
+        )
+
+    return {
+        "days": days,
+        "totals": {
+            "today_pv": int(totals.get("today_pv") or 0),
+            "today_uv": int(totals.get("today_uv") or 0),
+            "today_search": int(totals.get("today_search") or 0),
+            "d7_pv": int(totals.get("d7_pv") or 0),
+            "d7_uv": int(totals.get("d7_uv") or 0),
+            "d7_search": int(totals.get("d7_search") or 0),
+            "d30_pv": int(totals.get("d30_pv") or 0),
+            "d30_uv": int(totals.get("d30_uv") or 0),
+        },
+        "daily": daily,
+        "by_event": by_event,
+        "top_paths": top_paths,
+        "top_queries": top_queries,
+        "recent": recent,
+    }
+
+
 def create_feedback(
     *,
     content: str,

@@ -25,10 +25,11 @@
     <header class="header top">
       <div class="top-left">
         <h1>控制台</h1>
-        <p class="muted">卡密 · 埋点 · 反馈</p>
+        <p class="muted">卡密 · 流量 · 埋点 · 反馈</p>
       </div>
       <nav class="tabs">
         <button type="button" class="tab active" data-tab="keys">卡密</button>
+        <button type="button" class="tab" data-tab="traffic">流量</button>
         <button type="button" class="tab" data-tab="events">埋点</button>
         <button type="button" class="tab" data-tab="feedbacks">反馈</button>
       </nav>
@@ -142,6 +143,69 @@
                 <tbody id="machinesBody"></tbody>
               </table>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-traffic" class="panel">
+        <div class="toolbar card">
+          <div class="row between">
+            <h2>网站流量</h2>
+            <div class="row">
+              <label>天数
+                <select id="trafficDays">
+                  <option value="7">近 7 天</option>
+                  <option value="14" selected>近 14 天</option>
+                  <option value="30">近 30 天</option>
+                </select>
+              </label>
+              <button type="button" id="refreshTraffic" class="ghost">刷新</button>
+            </div>
+          </div>
+          <p class="muted traffic-hint">统计查询站 page view / 搜索（匿名访客）。上线前的历史访问不会回溯。</p>
+          <div id="trafficCards" class="traffic-cards"></div>
+          <div class="traffic-chart-wrap">
+            <div class="row between">
+              <strong>每日 PV / UV</strong>
+              <span id="trafficChartLegend" class="muted"></span>
+            </div>
+            <div id="trafficChart" class="traffic-chart"></div>
+          </div>
+        </div>
+        <div class="traffic-grid">
+          <div class="card">
+            <h2>热门路径</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>路径</th><th>PV</th></tr></thead>
+                <tbody id="trafficPathsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <h2>热门查询</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>条件摘要</th><th>次数</th></tr></thead>
+                <tbody id="trafficQueriesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>最近访问</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>事件</th>
+                  <th>访客</th>
+                  <th>详情</th>
+                </tr>
+              </thead>
+              <tbody id="trafficRecentBody"></tbody>
+            </table>
           </div>
         </div>
       </section>
