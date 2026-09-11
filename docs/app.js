@@ -1466,23 +1466,25 @@ function renderRoles(roles) {
     <thead><tr>
       <th>大区</th>
       <th>服务器</th>
-      <th>任务</th>
       <th>昵称</th>
       <th>门派</th>
       <th class="num sortable" data-sort="level">${sortHeaderHtml("等级", "level")}</th>
+      <th class="num sortable" data-sort="price">${sortHeaderHtml("价格", "price")}</th>
+      <th>状态</th>
+      <th>购买时间</th>
+      <th class="num sortable" data-sort="gold">${sortHeaderHtml("金币(万)", "gold")}</th>
+      <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结金币(万)", "freeze")}</th>
+      <th class="num sortable col-material-gold" data-sort="material_gold">${sortHeaderHtml("物资估算金币", "material_gold")}</th>
+      <th class="sortable" data-sort="trade_credit" title="交易信誉等级·交易所需小时">${sortHeaderHtml("信誉", "trade_credit")}</th>
+      <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
+      <th class="num sortable" data-sort="shendoudou">${sortHeaderHtml("神兜兜", "shendoudou")}</th>
+      <th class="num sortable" data-sort="baoshichui">${sortHeaderHtml("宝石锤", "baoshichui")}</th>
+      <th>任务</th>
       <th class="num sortable" data-sort="current_exp">${sortHeaderHtml("当前经验", "current_exp")}</th>
       <th class="num sortable" data-sort="total_exp">${sortHeaderHtml("总经验", "total_exp")}</th>
       <th class="num sortable" data-sort="usable_exp">${sortHeaderHtml("可使用经验", "usable_exp")}</th>
       <th class="col-boost sortable" data-sort="boost89">${sortHeaderHtml("直升89", "boost89")}</th>
       <th class="col-boost sortable" data-sort="boost115">${sortHeaderHtml("直升115", "boost115")}</th>
-      <th class="num sortable" data-sort="price">${sortHeaderHtml("价格", "price")}</th>
-      <th>状态</th>
-      <th>可购买</th>
-      <th class="num sortable" data-sort="gold">${sortHeaderHtml("金币(万)", "gold")}</th>
-      <th class="num sortable col-material-gold" data-sort="material_gold">${sortHeaderHtml("物资估算金币", "material_gold")}</th>
-      <th class="sortable" data-sort="trade_credit" title="交易信誉等级·交易所需小时">${sortHeaderHtml("信誉", "trade_credit")}</th>
-      <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
-      <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结(万)", "freeze")}</th>
       <th class="num sortable" data-sort="gold_ratio" title="售价每 1 元对应多少万金币">${sortHeaderHtml("1元金币", "gold_ratio")}</th>
       <th class="num sortable col-material-ratio" data-sort="material_ratio" title="售价每 1 元对应多少万物资金币">${sortHeaderHtml("1元物资", "material_ratio")}</th>
       <th class="num sortable" data-sort="gold_value" title="按金价折算：金币÷金价。金价可在下方物资设置里改">${sortHeaderHtml("金币估值", "gold_value")}</th>
@@ -1490,8 +1492,6 @@ function renderRoles(roles) {
       ${PRICE_BUMPS.map((item) =>
         `<th class="num sortable col-material-ratio col-material-bump" data-sort="${esc(item.key)}">${sortHeaderHtml(item.short, item.key)}</th>`
       ).join("")}
-      <th class="num sortable" data-sort="shendoudou">${sortHeaderHtml("神兜兜", "shendoudou")}</th>
-      <th class="num sortable" data-sort="baoshichui">${sortHeaderHtml("宝石锤", "baoshichui")}</th>
       <th class="num sortable" data-sort="jinliulu">${sortHeaderHtml("金柳露", "jinliulu")}</th>
       <th class="num sortable" data-sort="jinghua">${sortHeaderHtml("精华", "jinghua")}</th>
       <th class="num sortable" data-sort="wuse_shi">${sortHeaderHtml("四色石", "wuse_shi")}</th>
@@ -1508,23 +1508,25 @@ function renderRoles(roles) {
       <tr class="role-row" data-role-key="${esc(roleKey(r))}" tabindex="0" title="点击查看明细">
         <td>${esc(r.area_name)}</td>
         <td>${esc(r.server_name)}</td>
-        <td class="task-cell">${fmtCrawlTasks(r)}</td>
         <td class="name">${highlightMatch(r.role_name, getFilters().roleNames)}</td>
         <td>${esc(r.school)}</td>
         <td class="num">${esc(r.level ?? "-")}</td>
+        <td class="num price">¥${esc(r.price)}</td>
+        <td><span class="sale-tag ${esc(liveSaleStatus(r) || "unknown")}">${esc(fmtSaleStatus(r))}</span></td>
+        <td>${saleTimeHtml(r)}</td>
+        <td class="num gold">${esc(fmtGoldWan(r))}</td>
+        <td class="num freeze">${esc(fmtFreezeWan(r))}</td>
+        <td class="num material-gold col-material-gold">${esc(fmtMaterialGold(r))}</td>
+        <td>${esc(fmtTradeCredit(r))}</td>
+        <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
+        <td class="num">${esc(keyItemCount(r, "shendoudou") || "-")}</td>
+        <td class="num">${esc(keyItemCount(r, "baoshichui") || "-")}</td>
+        <td class="task-cell">${fmtCrawlTasks(r)}</td>
         <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
         <td class="num exp">${esc(fmtExpYi(totalExp(r)))}</td>
         <td class="num exp">${esc(fmtExpYi(usableExp(r)))}</td>
         <td class="col-boost">${renderBoostBar(boost89(r), "89")}</td>
         <td class="col-boost">${renderBoostBar(boost115(r), "115")}</td>
-        <td class="num price">¥${esc(r.price)}</td>
-        <td><span class="sale-tag ${esc(liveSaleStatus(r) || "unknown")}">${esc(fmtSaleStatus(r))}</span></td>
-        <td>${saleTimeHtml(r)}</td>
-        <td class="num gold">${esc(fmtGoldWan(r))}</td>
-        <td class="num material-gold col-material-gold">${esc(fmtMaterialGold(r))}</td>
-        <td>${esc(fmtTradeCredit(r))}</td>
-        <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
-        <td class="num freeze">${esc(fmtFreezeWan(r))}</td>
         <td class="num ratio">${esc(fmtGoldPerYuan(r))}</td>
         <td class="num ratio col-material-ratio">${esc(fmtMaterialRatio(r))}</td>
         <td class="num gold">${esc(fmtGoldValue(r))}</td>
@@ -1532,8 +1534,6 @@ function renderRoles(roles) {
         ${PRICE_BUMPS.map((item) =>
           `<td class="num ratio col-material-ratio col-material-bump">${esc(fmtMaterialRatioAtPriceBump(r, item.bump))}</td>`
         ).join("")}
-        <td class="num">${esc(keyItemCount(r, "shendoudou") || "-")}</td>
-        <td class="num">${esc(keyItemCount(r, "baoshichui") || "-")}</td>
         <td class="num item-jinliulu">${esc(keyItemCount(r, "jinliulu") || "-")}</td>
         <td class="num item-jinghua">${esc(keyItemCount(r, "jinghua") || "-")}</td>
         <td class="num item-wuse-shi">${esc(keyItemCount(r, "wuse_shi") || "-")}</td>
