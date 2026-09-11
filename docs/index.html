@@ -124,8 +124,11 @@
         <span class="chip-group-label">召唤灵</span>
         <div class="chip-list" role="group" aria-label="宠物格子">
           <button id="petSlotGt12" type="button" class="chip chip-pet-slot" data-min="12" aria-pressed="false">格子&gt;12</button>
+          <label class="chip-inline-label" for="petSlotMin">
+            <span class="chip-inline-prefix">格子&gt;</span>
+            <input id="petSlotMin" type="number" placeholder="如 12" min="0" step="1" inputmode="numeric">
+          </label>
         </div>
-        <label class="chip-inline-label">格子&gt;<input id="petSlotMin" type="number" placeholder="如 12" min="0" step="1"></label>
       </div>
     </div>
     <details class="material-prices" id="materialPricesPanel">

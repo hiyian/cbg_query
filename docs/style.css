@@ -399,16 +399,33 @@ body {
   background: rgba(140, 220, 160, 0.12);
 }
 
+.filters label.chip-inline-label,
 .chip-inline-label {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.875rem;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
   color: var(--muted);
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
+.chip-inline-prefix {
+  flex: 0 0 auto;
+}
+
+.filters label.chip-inline-label input,
 .chip-inline-label input {
-  width: 4.5rem;
+  width: 4.25rem;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  box-sizing: border-box;
 }
 
 .material-prices {
@@ -975,8 +992,15 @@ body.modal-open { overflow: hidden; }
     min-height: 36px;
     padding: 8px 14px;
   }
+  .filters label.chip-inline-label,
+  .chip-inline-label {
+    width: auto;
+    align-self: center;
+  }
+  .filters label.chip-inline-label input,
   .chip-inline-label input {
-    width: 5.5rem;
+    width: 5rem;
+    min-width: 5rem;
     font-size: 16px;
     min-height: 36px;
   }
