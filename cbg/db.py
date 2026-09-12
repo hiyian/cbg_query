@@ -55,11 +55,20 @@ ROLE_DETAIL_KEYS = frozenset(
 
 
 def get_database_url(*, prefer_non_pooling: bool = False) -> str:
+    # Prefer CBG_* to bypass stale Neon Vercel integration overrides.
     if prefer_non_pooling:
-        url = os.environ.get("POSTGRES_URL_NON_POOLING")
-        if url:
-            return url
-    for key in ("POSTGRES_URL", "DATABASE_URL"):
+        for key in (
+            "CBG_POSTGRES_URL_NON_POOLING",
+            "POSTGRES_URL_NON_POOLING",
+        ):
+            url = os.environ.get(key)
+            if url:
+                return url
+    for key in (
+        "CBG_POSTGRES_URL",
+        "POSTGRES_URL",
+        "DATABASE_URL",
+    ):
         url = os.environ.get(key)
         if url:
             return url
