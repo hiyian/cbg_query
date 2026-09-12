@@ -489,7 +489,15 @@ function materialBreakdownRowsHtml(role) {
 function materialPriceCellHtml(role) {
   const amount = fmtMaterialPrice(role);
   const rate = getGoldRate();
-  return `<span class="material-amount" tabindex="0" aria-label="物资估值 ${amount}（金价 ${rate}），悬停查看明细">
+  return `<span class="material-amount" tabindex="0" data-tip-title="物资估值明细（金价 ${rate.toLocaleString("zh-CN")}）" aria-label="物资估值 ${amount}（金价 ${rate}），悬停查看明细">
+    <span class="material-price-value">${esc(amount)}</span>
+    <span class="material-tip-src" hidden>${materialBreakdownRowsHtml(role)}</span>
+  </span>`;
+}
+
+function materialGoldCellHtml(role) {
+  const amount = fmtMaterialGold(role);
+  return `<span class="material-amount" tabindex="0" data-tip-title="物资估算明细" aria-label="物资估算金币 ${amount}，悬停查看明细">
     <span class="material-price-value">${esc(amount)}</span>
     <span class="material-tip-src" hidden>${materialBreakdownRowsHtml(role)}</span>
   </span>`;
@@ -524,7 +532,9 @@ function showMaterialHoverTip(anchor) {
   const src = anchor.querySelector(".material-tip-src");
   if (!src) return;
   const tip = ensureMaterialHoverTip();
-  tip.innerHTML = `<div class="material-hover-tip-title">物资估值明细（金价 ${getGoldRate().toLocaleString("zh-CN")}）</div>${src.innerHTML}`;
+  const title = anchor.dataset.tipTitle
+    || `物资估值明细（金价 ${getGoldRate().toLocaleString("zh-CN")}）`;
+  tip.innerHTML = `<div class="material-hover-tip-title">${esc(title)}</div>${src.innerHTML}`;
   tip.hidden = false;
   const rect = anchor.getBoundingClientRect();
   const tipRect = tip.getBoundingClientRect();
@@ -563,16 +573,8 @@ function fmtMaterialRatioAtPriceBump(role, bump) {
 }
 
 function materialGold(role) {
-  const prices = getMaterialPrices();
-  const items = roleKeyItems(role);
-  const gold = Number(role.金币 ?? 0);
-  return gold
-    + (items.shendoudou || 0) * prices.shendoudou
-    + (items.baoshichui || 0) * prices.baoshichui
-    + (items.jinliulu || 0) * prices.jinliulu
-    + fabaoJinghuaCount(role) * prices.fabaoJinghua
-    + shenshouCount(role) * prices.shenshou
-    + extraItemGold(items, prices);
+  // 与物资估值同一套明细合计，悬停公式才对得上
+  return materialRatioBreakdown(role).total;
 }
 
 function fmtMaterialGold(role) {
@@ -1425,7 +1427,7 @@ function renderRoleCard(r) {
     </div>
     <div class="role-card-grid">
       <div class="role-card-kv"><div class="k">金币</div><div class="v gold">${esc(fmtGoldWan(r))}万</div></div>
-      <div class="role-card-kv"><div class="k">物资估算金币</div><div class="v gold">${esc(fmtMaterialGold(r))}</div></div>
+      <div class="role-card-kv"><div class="k">物资估算金币</div><div class="v gold">${materialGoldCellHtml(r)}</div></div>
       <div class="role-card-kv"><div class="k">信誉</div><div class="v">${esc(fmtTradeCredit(r))}</div></div>
       <div class="role-card-kv"><div class="k">1元金币</div><div class="v ratio">${esc(fmtGoldPerYuan(r))}</div></div>
       <div class="role-card-kv"><div class="k">1元物资</div><div class="v ratio">${esc(fmtMaterialRatio(r))}</div></div>
@@ -1474,7 +1476,7 @@ function renderRoles(roles) {
       <th>购买时间</th>
       <th class="num sortable" data-sort="gold">${sortHeaderHtml("金币(万)", "gold")}</th>
       <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结金币(万)", "freeze")}</th>
-      <th class="num sortable col-material-gold" data-sort="material_gold">${sortHeaderHtml("物资估算金币", "material_gold")}</th>
+      <th class="num sortable col-material-gold" data-sort="material_gold" title="悬停查看物资估算明细">${sortHeaderHtml("物资估算金币", "material_gold")}</th>
       <th class="sortable" data-sort="trade_credit" title="交易信誉等级·交易所需小时">${sortHeaderHtml("信誉", "trade_credit")}</th>
       <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
       <th class="num sortable" data-sort="shendoudou">${sortHeaderHtml("神兜兜", "shendoudou")}</th>
@@ -1516,7 +1518,7 @@ function renderRoles(roles) {
         <td>${saleTimeHtml(r)}</td>
         <td class="num gold">${esc(fmtGoldWan(r))}</td>
         <td class="num freeze">${esc(fmtFreezeWan(r))}</td>
-        <td class="num material-gold col-material-gold">${esc(fmtMaterialGold(r))}</td>
+        <td class="num material-gold col-material-gold">${materialGoldCellHtml(r)}</td>
         <td>${esc(fmtTradeCredit(r))}</td>
         <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
         <td class="num">${esc(keyItemCount(r, "shendoudou") || "-")}</td>
