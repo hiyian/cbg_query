@@ -633,7 +633,7 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
 .list-summary-item.mid-fushi .value { color: #9ad0c6; }
 .list-summary-item.high-fushi .value { color: #f0c27a; }
 
-.roles-table { min-width: 2280px; table-layout: auto; }
+.roles-table { min-width: 2480px; table-layout: auto; }
 .roles-table td.exp { color: #9ad0ff; font-variant-numeric: tabular-nums; }
 .roles-table th.col-boost,
 .roles-table td.col-boost { min-width: 110px; }
