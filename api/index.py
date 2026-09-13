@@ -29,6 +29,7 @@ app.add_middleware(
 SORT_FIELDS = {
     "material_ratio",
     "material_gold",
+    "gold_value",
     "gold_ratio",
     "price",
     "gold",

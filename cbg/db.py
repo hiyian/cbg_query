@@ -365,12 +365,17 @@ def _sort_roles(roles: list[dict[str, Any]], sort: str, sort_dir: str) -> list[d
 
     def sort_value(role: dict[str, Any]) -> float:
         items = role.get("_key_items") or key_item_counts(role)
-        if sort == "material_gold":
+        if sort == "material_gold" or sort == "gold_value":
             return float(role.get("material_gold") or estimated_material_gold(role, items))
         if sort == "material_ratio":
             return material_ratio(role, items) or -1.0
         if sort == "gold_ratio":
-            return gold_ratio(role) or -1.0
+            # 金币比例 = 物资金币 / 售价（与前端口径一致）
+            price = float(role.get("price") or 0)
+            if not price:
+                return -1.0
+            mg = float(role.get("material_gold") or estimated_material_gold(role, items))
+            return mg / price
         if sort == "price":
             return float(role.get("price") or 0)
         if sort == "gold":

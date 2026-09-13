@@ -134,7 +134,7 @@
     <details class="material-prices" id="materialPricesPanel">
       <summary>金价 / 物资折算（本地保存，影响估值与明细）</summary>
       <div class="row material-prices-grid">
-        <label title="1元人民币可换多少金币。估值=金币÷金价。默认10000即1元=1万金币">金价（1元=金币）<input id="priceGoldRate" type="number" min="1" step="100"></label>
+        <label title="1元人民币可换多少金币。金币估值=物资金币÷金价。默认10000即1元=1万金币">金价（1元=金币）<input id="priceGoldRate" type="number" min="1" step="100"></label>
         <label>神兜兜（金币）<input id="priceShendoudou" type="number" min="0" step="1000"></label>
         <label>宝石锤（金币）<input id="priceBaoshichui" type="number" min="0" step="1000"></label>
         <label>金柳露（金币）<input id="priceJinliulu" type="number" min="0" step="1"></label>
@@ -146,7 +146,7 @@
         <label>定魂珠/金刚石（金币）<input id="priceDinghun" type="number" min="0" step="1000"></label>
         <label>中级符纸（金币）<input id="priceMidFushi" type="number" min="0" step="100"></label>
         <label>高级符纸（金币）<input id="priceHighFushi" type="number" min="0" step="100"></label>
-        <label>物资计金柳露≥<input id="priceJinliuluMin" type="number" min="0" step="1" title="物资估值中仅当金柳露数量达到该值才计入"></label>
+        <label>物资计金柳露≥<input id="priceJinliuluMin" type="number" min="0" step="1" title="金币估值中仅当金柳露数量达到该值才计入"></label>
         <button id="resetMaterialPrices" type="button" class="link-btn">恢复默认</button>
       </div>
     </details>

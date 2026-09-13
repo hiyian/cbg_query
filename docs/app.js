@@ -10,7 +10,7 @@ let DATA = {
   taskKeys: [],
   metaText: "",
 };
-let roleSort = { key: "material_ratio", dir: "desc" };
+let roleSort = { key: "gold_ratio", dir: "desc" };
 let selectedServerKeys = new Set();
 let selectedTaskKeys = new Set();
 
@@ -44,7 +44,7 @@ const KEY_ITEMS = [
 
 const STONE_NAMES = new Set(["朱雀石", "青龙石", "白虎石", "玄武石"]);
 
-const DEFAULT_GOLD_RATE = 10000; // 1 元 = 多少金币；估值 = 金币 / 金价
+const DEFAULT_GOLD_RATE = 10000; // 1 元 = 多少金币；金币估值 = 物资金币 / 金价
 const DEFAULT_MATERIAL_PRICES = {
   goldRate: DEFAULT_GOLD_RATE,
   shendoudou: 30000,
@@ -332,9 +332,23 @@ function goldPerYuanWan(role) {
   return goldRatio(role);
 }
 
+/** 金币比例 = 物资金币 / 售价 */
+function materialGoldPriceRatio(role) {
+  const price = Number(role.price ?? 0);
+  if (!price) return null;
+  return materialGold(role) / price;
+}
+
+function fmtMaterialGoldPriceRatio(role) {
+  const v = materialGoldPriceRatio(role);
+  if (v == null || !Number.isFinite(v)) return "-";
+  if (Math.abs(v) >= 100) return Math.round(v).toLocaleString("zh-CN");
+  return v.toFixed(1);
+}
+
+/** 金币估值 = 物资金币 / 金价（默认 10000，可在物资设置里改） */
 function goldValueYuan(role) {
-  const gold = Number(role.金币 ?? 0);
-  return gold / getGoldRate();
+  return materialPriceYuan(role);
 }
 
 function fmtGoldWan(role) {
@@ -437,7 +451,7 @@ function materialPerYuanWan(role) {
   return total / price / 10000;
 }
 
-/** 按当前金价折算的物资估值 / 售价 */
+/** 按当前金价折算的金币估值 / 售价（旧「1元物资」口径，保留供兼容） */
 function materialRatio(role) {
   const price = Number(role.price ?? 0);
   if (!price) return null;
@@ -489,7 +503,7 @@ function materialBreakdownRowsHtml(role) {
 function materialPriceCellHtml(role) {
   const amount = fmtMaterialPrice(role);
   const rate = getGoldRate();
-  return `<span class="material-amount" tabindex="0" data-tip-title="物资估值明细（金价 ${rate.toLocaleString("zh-CN")}）" aria-label="物资估值 ${amount}（金价 ${rate}），悬停查看明细">
+  return `<span class="material-amount" tabindex="0" data-tip-title="金币估值明细（物资金币÷金价 ${rate.toLocaleString("zh-CN")}）" aria-label="金币估值 ${amount}（金价 ${rate}），悬停查看明细">
     <span class="material-price-value">${esc(amount)}</span>
     <span class="material-tip-src" hidden>${materialBreakdownRowsHtml(role)}</span>
   </span>`;
@@ -533,7 +547,7 @@ function showMaterialHoverTip(anchor) {
   if (!src) return;
   const tip = ensureMaterialHoverTip();
   const title = anchor.dataset.tipTitle
-    || `物资估值明细（金价 ${getGoldRate().toLocaleString("zh-CN")}）`;
+    || `金币估值明细（物资金币÷金价 ${getGoldRate().toLocaleString("zh-CN")}）`;
   tip.innerHTML = `<div class="material-hover-tip-title">${esc(title)}</div>${src.innerHTML}`;
   tip.hidden = false;
   const rect = anchor.getBoundingClientRect();
@@ -573,7 +587,7 @@ function fmtMaterialRatioAtPriceBump(role, bump) {
 }
 
 function materialGold(role) {
-  // 与物资估值同一套明细合计，悬停公式才对得上
+  // 与金币估值同一套明细合计，悬停公式才对得上
   return materialRatioBreakdown(role).total;
 }
 
@@ -1146,7 +1160,7 @@ function flattenDetails(roles) {
         role_name: role.role_name,
         price: role.price,
         gold_wan: fmtGoldWan(role),
-        gold_ratio: fmtGoldPerYuan(role),
+        gold_ratio: fmtMaterialGoldPriceRatio(role),
         gold_value: fmtGoldValue(role),
         shendoudou: keyItemCount(role, "shendoudou") || "",
         baoshichui: keyItemCount(role, "baoshichui") || "",
@@ -1169,7 +1183,8 @@ function flattenDetails(roles) {
         role_name: role.role_name,
         price: role.price,
         gold_wan: fmtGoldWan(role),
-        gold_ratio: fmtGoldPerYuan(role),
+        gold_ratio: fmtMaterialGoldPriceRatio(role),
+        gold_value: fmtGoldValue(role),
         shendoudou: keyItemCount(role, "shendoudou") || "",
         baoshichui: keyItemCount(role, "baoshichui") || "",
         明细类型: pet.type,
@@ -1243,12 +1258,11 @@ function showRoleDetail(role) {
     ["大区", role.area_name], ["服务器", role.server_name],
     ["上架状态", fmtSaleStatus(role)], ["可购买", fmtSaleTime(role)],
     ["金币（万）", fmtGoldWan(role)], ["物资估算金币", fmtMaterialGold(role)],
-    ["金币估值", fmtGoldValue(role)], ["物资估值", fmtMaterialPrice(role)],
+    ["金币比例", fmtMaterialGoldPriceRatio(role)],
+    ["金币估值", fmtGoldValue(role)],
     ["冻结金币（万）", fmtFreezeWan(role)],
     ["可用上限（万）", fmtUsableCapWan(role)],
     ["交易信誉", fmtTradeCredit(role)],
-    ["1元金币", fmtGoldPerYuan(role)], ["1元物资", fmtMaterialRatio(role)],
-    ...PRICE_BUMPS.map((item) => [item.label, fmtMaterialRatioAtPriceBump(role, item.bump)]),
     ...KEY_ITEMS.map((item) => [item.label, keyItemCount(role, item.key) || "-"]),
     ["气血", role.气血], ["魔法", role.魔法], ["物伤", role.物伤], ["法伤", role.法伤],
     ["速度", role.速度], ["防御", role.防御], ["法防", role.法防],
@@ -1270,7 +1284,7 @@ function showRoleDetail(role) {
       <h2>${highlightMatch(role.role_name, getFilters().roleNames)} · ${esc(role.school)} Lv${esc(role.level)}</h2>
       <div class="price">¥${esc(role.price)}</div>
       <div class="sub">${esc(role.area_name)} · ${esc(role.server_name)} · ${esc(role.desc_sumup)}</div>
-      <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 1元金币 ${esc(fmtGoldPerYuan(role))} · 1元物资 ${esc(fmtMaterialRatio(role))} · 金币估值 ${esc(fmtGoldValue(role))} · 物资估值 ${esc(fmtMaterialPrice(role))}（金价 ${esc(getGoldRate().toLocaleString("zh-CN"))}）</div>
+      <div class="sub">金币 ${esc(fmtGoldWan(role))} 万 · 金币比例 ${esc(fmtMaterialGoldPriceRatio(role))} · 金币估值 ${esc(fmtGoldValue(role))}（物资金币÷金价 ${esc(getGoldRate().toLocaleString("zh-CN"))}）</div>
       <div class="sub">当前经验 ${esc(fmtExpYi(currentExp(role)))} · 总经验 ${esc(fmtExpYi(totalExp(role)))} · 可使用 ${esc(fmtExpYi(usableExp(role)))}</div>
       <div class="boost-bars detail-boost">${renderBoostBar(boost89(role), "直升89")}${renderBoostBar(boost115(role), "直升115")}</div>
       <div class="sub">${esc(role.ordersn)}</div>
@@ -1332,7 +1346,7 @@ const ROLE_SORT_KEYS = {
   material_ratio_p50: (role) => materialRatioAtPriceBump(role, 0.50) ?? -1,
   material_price: (role) => materialPriceYuan(role),
   material_gold: (role) => materialGold(role),
-  gold_ratio: (role) => goldRatio(role) ?? -1,
+  gold_ratio: (role) => materialGoldPriceRatio(role) ?? -1,
   gold_value: (role) => goldValueYuan(role),
   price: (role) => Number(role.price ?? 0),
   gold: (role) => goldWan(role),
@@ -1358,7 +1372,7 @@ const ROLE_SORT_KEYS = {
 };
 
 function sortRoles(roles) {
-  const getter = ROLE_SORT_KEYS[roleSort.key] || ROLE_SORT_KEYS.material_ratio;
+  const getter = ROLE_SORT_KEYS[roleSort.key] || ROLE_SORT_KEYS.gold_ratio;
   const dir = roleSort.dir === "asc" ? 1 : -1;
   return [...roles].sort((a, b) => {
     const av = getter(a);
@@ -1370,10 +1384,9 @@ function sortRoles(roles) {
 }
 
 const MOBILE_SORTS = [
-  ["material_ratio", "1元物资"],
-  ["material_price", "物资估值"],
-  ["gold_ratio", "1元金币"],
+  ["gold_ratio", "金币比例"],
   ["gold_value", "金币估值"],
+  ["material_gold", "物资估算金币"],
   ["price", "价格"],
   ["gold", "金币"],
   ["trade_credit", "信誉"],
@@ -1383,6 +1396,9 @@ const MOBILE_SORTS = [
   ["level", "等级"],
   ["xianyu", "仙玉"],
   ["shenshou", "神兽"],
+  ["jinliulu", "金柳露"],
+  ["jinghua", "精华"],
+  ["pet_slot", "宠物格子"],
   ["qiannengguo", "潜能果"],
   ["jingmai", "经脉"],
   ["qianyuan", "乾元丹"],
@@ -1428,15 +1444,15 @@ function renderRoleCard(r) {
     <div class="role-card-grid">
       <div class="role-card-kv"><div class="k">金币</div><div class="v gold">${esc(fmtGoldWan(r))}万</div></div>
       <div class="role-card-kv"><div class="k">物资估算金币</div><div class="v gold">${materialGoldCellHtml(r)}</div></div>
-      <div class="role-card-kv"><div class="k">金币估值</div><div class="v gold">${esc(fmtGoldValue(r))}</div></div>
-      <div class="role-card-kv"><div class="k">物资估值</div><div class="v ratio">${materialPriceCellHtml(r)}</div></div>
+      <div class="role-card-kv"><div class="k">金币比例</div><div class="v ratio">${esc(fmtMaterialGoldPriceRatio(r))}</div></div>
+      <div class="role-card-kv"><div class="k">金币估值</div><div class="v ratio">${materialPriceCellHtml(r)}</div></div>
       <div class="role-card-kv"><div class="k">信誉</div><div class="v">${esc(fmtTradeCredit(r))}</div></div>
-      <div class="role-card-kv"><div class="k">1元金币</div><div class="v ratio">${esc(fmtGoldPerYuan(r))}</div></div>
-      <div class="role-card-kv"><div class="k">1元物资</div><div class="v ratio">${esc(fmtMaterialRatio(r))}</div></div>
-      ${PRICE_BUMPS.map((item) =>
-        `<div class="role-card-kv"><div class="k">${esc(item.label)}</div><div class="v ratio">${esc(fmtMaterialRatioAtPriceBump(r, item.bump))}</div></div>`
-      ).join("")}
       <div class="role-card-kv"><div class="k">可使用经验</div><div class="v">${esc(fmtExpYi(usableExp(r)))}</div></div>
+      <div class="role-card-kv"><div class="k">神兽</div><div class="v">${esc(shenshouCount(r) || "-")}</div></div>
+      <div class="role-card-kv"><div class="k">金柳露</div><div class="v">${esc(keyItemCount(r, "jinliulu") || "-")}</div></div>
+      <div class="role-card-kv"><div class="k">精华</div><div class="v">${esc(keyItemCount(r, "jinghua") || "-")}</div></div>
+      <div class="role-card-kv"><div class="k">四色石</div><div class="v">${esc(keyItemCount(r, "wuse_shi") || "-")}</div></div>
+      <div class="role-card-kv"><div class="k">宠物格子</div><div class="v">${esc(r["宠物格子数"] ?? "-")}</div></div>
       <div class="role-card-kv"><div class="k">潜能果</div><div class="v">${esc(fmtNum(r["潜能果"]))}</div></div>
       <div class="role-card-kv"><div class="k">乾元丹</div><div class="v">${esc(fmtNum(r["乾元丹"]))}</div></div>
       <div class="role-card-kv"><div class="k">经脉</div><div class="v">${esc(fmtNum(r["经脉点数"]))}</div></div>
@@ -1477,28 +1493,23 @@ function renderRoles(roles) {
       <th class="num sortable" data-sort="gold">${sortHeaderHtml("金币(万)", "gold")}</th>
       <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结金币(万)", "freeze")}</th>
       <th class="num sortable col-material-gold" data-sort="material_gold" title="悬停查看物资估算明细">${sortHeaderHtml("物资估算金币", "material_gold")}</th>
-      <th class="num sortable" data-sort="gold_value" title="按金价折算：金币÷金价。金价可在下方物资设置里改">${sortHeaderHtml("金币估值", "gold_value")}</th>
-      <th class="num sortable col-material-price" data-sort="material_price" title="按金价折算的物资估值；悬停看明细。金价默认 10000（1元=1万金币）">${sortHeaderHtml("物资估值", "material_price")}</th>
+      <th class="num sortable col-material-ratio" data-sort="gold_ratio" title="物资金币 ÷ 售价">${sortHeaderHtml("金币比例", "gold_ratio")}</th>
+      <th class="num sortable col-material-price" data-sort="gold_value" title="物资金币 ÷ 金价（默认 10000，可在物资设置里改）；悬停看明细">${sortHeaderHtml("金币估值", "gold_value")}</th>
       <th class="sortable" data-sort="trade_credit" title="交易信誉等级·交易所需小时">${sortHeaderHtml("信誉", "trade_credit")}</th>
       <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
       <th class="num sortable" data-sort="shendoudou">${sortHeaderHtml("神兜兜", "shendoudou")}</th>
       <th class="num sortable" data-sort="baoshichui">${sortHeaderHtml("宝石锤", "baoshichui")}</th>
-      <th>任务</th>
-      <th class="num sortable" data-sort="current_exp">${sortHeaderHtml("当前经验", "current_exp")}</th>
-      <th class="num sortable" data-sort="total_exp">${sortHeaderHtml("总经验", "total_exp")}</th>
-      <th class="num sortable" data-sort="usable_exp">${sortHeaderHtml("可使用经验", "usable_exp")}</th>
       <th class="col-boost sortable" data-sort="boost89">${sortHeaderHtml("直升89", "boost89")}</th>
       <th class="col-boost sortable" data-sort="boost115">${sortHeaderHtml("直升115", "boost115")}</th>
-      <th class="num sortable" data-sort="gold_ratio" title="售价每 1 元对应多少万金币">${sortHeaderHtml("1元金币", "gold_ratio")}</th>
-      <th class="num sortable col-material-ratio" data-sort="material_ratio" title="售价每 1 元对应多少万物资金币">${sortHeaderHtml("1元物资", "material_ratio")}</th>
-      ${PRICE_BUMPS.map((item) =>
-        `<th class="num sortable col-material-ratio col-material-bump" data-sort="${esc(item.key)}">${sortHeaderHtml(item.short, item.key)}</th>`
-      ).join("")}
+      <th class="num sortable col-shenshou" data-sort="shenshou">${sortHeaderHtml("神兽", "shenshou")}</th>
       <th class="num sortable" data-sort="jinliulu">${sortHeaderHtml("金柳露", "jinliulu")}</th>
       <th class="num sortable" data-sort="jinghua">${sortHeaderHtml("精华", "jinghua")}</th>
       <th class="num sortable" data-sort="wuse_shi">${sortHeaderHtml("四色石", "wuse_shi")}</th>
       <th class="num sortable" data-sort="pet_slot">${sortHeaderHtml("宠物格子", "pet_slot")}</th>
-      <th class="num sortable col-shenshou" data-sort="shenshou">${sortHeaderHtml("神兽", "shenshou")}</th>
+      <th>任务</th>
+      <th class="num sortable" data-sort="current_exp">${sortHeaderHtml("当前经验", "current_exp")}</th>
+      <th class="num sortable" data-sort="total_exp">${sortHeaderHtml("总经验", "total_exp")}</th>
+      <th class="num sortable" data-sort="usable_exp">${sortHeaderHtml("可使用经验", "usable_exp")}</th>
       <th class="num sortable" data-sort="qiannengguo" title="潜能果使用数量">${sortHeaderHtml("潜能果", "qiannengguo")}</th>
       <th class="num sortable" data-sort="qianyuan" title="拥有乾元丹数量">${sortHeaderHtml("乾元丹", "qianyuan")}</th>
       <th class="num sortable" data-sort="jingmai" title="当前经脉方案已激活点数">${sortHeaderHtml("经脉", "jingmai")}</th>
@@ -1519,28 +1530,23 @@ function renderRoles(roles) {
         <td class="num gold">${esc(fmtGoldWan(r))}</td>
         <td class="num freeze">${esc(fmtFreezeWan(r))}</td>
         <td class="num material-gold col-material-gold">${materialGoldCellHtml(r)}</td>
-        <td class="num gold">${esc(fmtGoldValue(r))}</td>
+        <td class="num ratio col-material-ratio">${esc(fmtMaterialGoldPriceRatio(r))}</td>
         <td class="num col-material-price">${materialPriceCellHtml(r)}</td>
         <td>${esc(fmtTradeCredit(r))}</td>
         <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
         <td class="num">${esc(keyItemCount(r, "shendoudou") || "-")}</td>
         <td class="num">${esc(keyItemCount(r, "baoshichui") || "-")}</td>
-        <td class="task-cell">${fmtCrawlTasks(r)}</td>
-        <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
-        <td class="num exp">${esc(fmtExpYi(totalExp(r)))}</td>
-        <td class="num exp">${esc(fmtExpYi(usableExp(r)))}</td>
         <td class="col-boost">${renderBoostBar(boost89(r), "89")}</td>
         <td class="col-boost">${renderBoostBar(boost115(r), "115")}</td>
-        <td class="num ratio">${esc(fmtGoldPerYuan(r))}</td>
-        <td class="num ratio col-material-ratio">${esc(fmtMaterialRatio(r))}</td>
-        ${PRICE_BUMPS.map((item) =>
-          `<td class="num ratio col-material-ratio col-material-bump">${esc(fmtMaterialRatioAtPriceBump(r, item.bump))}</td>`
-        ).join("")}
+        <td class="num shenshou col-shenshou">${esc(shenshouCount(r) || "-")}</td>
         <td class="num item-jinliulu">${esc(keyItemCount(r, "jinliulu") || "-")}</td>
         <td class="num item-jinghua">${esc(keyItemCount(r, "jinghua") || "-")}</td>
         <td class="num item-wuse-shi">${esc(keyItemCount(r, "wuse_shi") || "-")}</td>
         <td class="num">${esc(r["宠物格子数"] ?? "-")}</td>
-        <td class="num shenshou col-shenshou">${esc(shenshouCount(r) || "-")}</td>
+        <td class="task-cell">${fmtCrawlTasks(r)}</td>
+        <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
+        <td class="num exp">${esc(fmtExpYi(totalExp(r)))}</td>
+        <td class="num exp">${esc(fmtExpYi(usableExp(r)))}</td>
         <td class="num">${esc(fmtNum(r["潜能果"]))}</td>
         <td class="num">${esc(fmtNum(r["乾元丹"]))}</td>
         <td class="num">${esc(fmtNum(r["经脉点数"]))}</td>
@@ -1594,7 +1600,7 @@ function render() {
     { key: "role_name", label: "角色" },
     { key: "price", label: "价格" },
     { key: "gold_wan", label: "金币(万)" },
-    { key: "gold_ratio", label: "1元金币" },
+    { key: "gold_ratio", label: "金币比例" },
     { key: "gold_value", label: "金币估值" },
     { key: "shendoudou", label: "神兜兜" },
     { key: "baoshichui", label: "宝石锤" },
@@ -1609,7 +1615,8 @@ function render() {
     { key: "role_name", label: "角色" },
     { key: "price", label: "价格" },
     { key: "gold_wan", label: "金币(万)" },
-    { key: "gold_ratio", label: "1元金币" },
+    { key: "gold_ratio", label: "金币比例" },
+    { key: "gold_value", label: "金币估值" },
     { key: "名称", label: "召唤灵" },
     { key: "宠物评分", label: "评分" },
     { key: "召唤等级", label: "等级" },
@@ -1787,7 +1794,9 @@ async function fetchRoles(page = DATA.page) {
     page_size: String(DATA.pageSize),
     sort: PRICE_BUMP_SORT_KEYS.has(roleSort.key)
       ? "material_ratio"
-      : roleSort.key === "material_price" ? "material_gold" : roleSort.key,
+      : (roleSort.key === "material_price" || roleSort.key === "gold_value")
+        ? "material_gold"
+        : roleSort.key,
     sort_dir: roleSort.dir,
   });
   for (const key of f.serverKeys) {
