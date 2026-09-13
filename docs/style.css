@@ -636,7 +636,7 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
 .roles-table { min-width: 2280px; table-layout: auto; }
 .roles-table td.exp { color: #9ad0ff; font-variant-numeric: tabular-nums; }
 .roles-table th.col-boost,
-.roles-table td.col-boost { min-width: 132px; }
+.roles-table td.col-boost { min-width: 110px; }
 .boost-bars { display: flex; flex-direction: column; gap: 6px; }
 .boost-bars.detail-boost { margin-top: 8px; max-width: 360px; }
 .boost-bar {
@@ -646,6 +646,7 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
   font-size: 0.72rem;
   color: var(--muted);
 }
+.boost-bar.no-label { gap: 4px; }
 .boost-label { width: 2.2em; flex: 0 0 auto; }
 .boost-track {
   flex: 1;
@@ -663,6 +664,72 @@ tr:hover td { background: rgba(91, 141, 239, 0.08); }
 }
 .boost-fill.done { background: linear-gradient(90deg, #2f9e6a, #3ecf8e); }
 .boost-pct { width: 2.4em; text-align: right; font-variant-numeric: tabular-nums; }
+
+.roles-table th.col-markup,
+.roles-table td.col-markup { min-width: 96px; white-space: normal; }
+.markup-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.markup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+}
+.markup-row .v { color: var(--accent); font-weight: 600; }
+
+.roles-table th.col-bargain,
+.roles-table td.col-bargain { min-width: 108px; white-space: normal; }
+.bargain-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+.bargain-input {
+  width: 100%;
+  min-width: 72px;
+  max-width: 110px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #111822;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.bargain-value {
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.roles-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+.roles-pagination-host,
+.pagination-host {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+.roles-footer .pagination,
+.pagination-host .pagination {
+  margin: 0;
+  justify-content: flex-end;
+  background: transparent;
+  border: none;
+  padding: 8px 0;
+}
 .roles-table td.name { font-weight: 600; white-space: normal; word-break: break-all; }
 .roles-table th.num,
 .roles-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -882,7 +949,7 @@ body.modal-open { overflow: hidden; }
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 16px;
   padding: 12px 16px;
 }
@@ -1035,10 +1102,19 @@ body.modal-open { overflow: hidden; }
   }
 
   main { order: 5; }
-  .pagination {
+  .pagination-host,
+  .roles-footer {
     order: 10;
+  }
+  .pagination {
     margin: 10px 12px;
     gap: 10px;
+    justify-content: stretch;
+  }
+  .roles-footer .pagination,
+  .pagination-host .pagination {
+    width: 100%;
+    justify-content: stretch;
   }
   .pagination button {
     min-width: 0;

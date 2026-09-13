@@ -158,17 +158,19 @@
     <button class="tab" data-tab="pets">召唤灵</button>
   </section>
 
-  <section id="pagination" class="pagination card" hidden>
-    <button id="prevPage" type="button">上一页</button>
-    <span id="pageInfo"></span>
-    <button id="nextPage" type="button">下一页</button>
-  </section>
-
   <main>
     <div id="rolesPanel" class="panel active"></div>
     <div id="detailsPanel" class="panel"></div>
     <div id="petsPanel" class="panel"></div>
   </main>
+
+  <div id="paginationHost" class="pagination-host">
+    <section id="pagination" class="pagination card" hidden>
+      <button id="prevPage" type="button">上一页</button>
+      <span id="pageInfo"></span>
+      <button id="nextPage" type="button">下一页</button>
+    </section>
+  </div>
 
   <div id="roleModal" class="modal" hidden>
     <div class="modal-backdrop" data-close></div>

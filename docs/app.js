@@ -303,14 +303,14 @@ function boost115(role) {
   return boostProgress(have, need, false);
 }
 
-function renderBoostBar(info, label) {
+function renderBoostBar(info, label, { showLabel = true } = {}) {
   if (!info) return `<span class="muted">-</span>`;
   const pct = Math.round(info.pct * 100);
   const title = info.done
     ? `${label} 已达`
     : `${label} ${fmtExpYi(info.have)} / ${fmtExpYi(info.need)}（${pct}%）`;
-  return `<div class="boost-bar" title="${esc(title)}">
-    <span class="boost-label">${esc(label)}</span>
+  return `<div class="boost-bar${showLabel ? "" : " no-label"}" title="${esc(title)}">
+    ${showLabel ? `<span class="boost-label">${esc(label)}</span>` : ""}
     <span class="boost-track"><span class="boost-fill${info.done ? " done" : ""}" style="width:${pct}%"></span></span>
     <span class="boost-pct">${info.done ? "满" : `${pct}%`}</span>
   </div>`;
@@ -566,24 +566,112 @@ function showMaterialHoverTip(anchor) {
 }
 
 const PRICE_BUMPS = [
-  { key: "material_ratio_p10", bump: 0.10, short: "售+10%", label: "售价+10%·1元物资" },
-  { key: "material_ratio_p20", bump: 0.20, short: "售+20%", label: "售价+20%·1元物资" },
-  { key: "material_ratio_p50", bump: 0.50, short: "售+50%", label: "售价+50%·1元物资" },
+  { key: "markup_p10", bump: 0.10, short: "+10%" },
+  { key: "markup_p20", bump: 0.20, short: "+20%" },
+  { key: "markup_p50", bump: 0.50, short: "+50%" },
 ];
 const PRICE_BUMP_SORT_KEYS = new Set(PRICE_BUMPS.map((item) => item.key));
 
-function materialPerYuanWanAtPriceBump(role, bump) {
-  const perYuan = materialPerYuanWan(role);
-  if (perYuan == null) return null;
-  return perYuan / (1 + bump);
+/** 加价估值 = 物资金币 ÷ 调价（售价×(1+加价比例)） */
+function materialGoldAtPrice(role, offerPrice) {
+  const price = Number(offerPrice);
+  if (!price || !Number.isFinite(price)) return null;
+  return materialGold(role) / price;
 }
 
-function materialRatioAtPriceBump(role, bump) {
-  return materialPerYuanWanAtPriceBump(role, bump);
+function markupOfferPrice(role, bump) {
+  const price = Number(role.price ?? 0);
+  if (!price) return null;
+  return price * (1 + bump);
 }
 
-function fmtMaterialRatioAtPriceBump(role, bump) {
-  return fmtWanPerYuan(materialPerYuanWanAtPriceBump(role, bump));
+function markupValue(role, bump) {
+  const offer = markupOfferPrice(role, bump);
+  if (offer == null) return null;
+  return materialGoldAtPrice(role, offer);
+}
+
+function fmtRatioAmount(v) {
+  if (v == null || !Number.isFinite(v)) return "-";
+  if (Math.abs(v) >= 100) return Math.round(v).toLocaleString("zh-CN");
+  return v.toFixed(1);
+}
+
+function fmtMarkupValue(role, bump) {
+  return fmtRatioAmount(markupValue(role, bump));
+}
+
+function markupValuesCellHtml(role) {
+  return `<div class="markup-values" title="加价估值 = 物资金币 ÷ 调价">
+    ${PRICE_BUMPS.map((item) =>
+      `<div class="markup-row"><span class="k">${esc(item.short)}</span><span class="v">${esc(fmtMarkupValue(role, item.bump))}</span></div>`
+    ).join("")}
+  </div>`;
+}
+
+/** 还价输入范围：[售价×80%, 售价-1] */
+const bargainOffers = new Map();
+
+function bargainPriceBounds(role) {
+  const price = Number(role.price ?? 0);
+  if (!price || price < 2) return null;
+  const min = Math.max(1, Math.floor(price * 0.8));
+  const max = price - 1;
+  if (min > max) return null;
+  return { min, max, price };
+}
+
+function defaultBargainPrice(bounds) {
+  return Math.min(bounds.max, Math.max(bounds.min, Math.round(bounds.price * 0.9)));
+}
+
+function getBargainPrice(role) {
+  const bounds = bargainPriceBounds(role);
+  if (!bounds) return null;
+  const key = roleKey(role);
+  let value = bargainOffers.get(key);
+  if (value == null || !Number.isFinite(value)) {
+    value = defaultBargainPrice(bounds);
+    bargainOffers.set(key, value);
+  }
+  return Math.min(bounds.max, Math.max(bounds.min, value));
+}
+
+function setBargainPrice(role, raw) {
+  const bounds = bargainPriceBounds(role);
+  if (!bounds) return null;
+  let value = Number(raw);
+  if (!Number.isFinite(value)) value = defaultBargainPrice(bounds);
+  value = Math.min(bounds.max, Math.max(bounds.min, Math.round(value)));
+  bargainOffers.set(roleKey(role), value);
+  return value;
+}
+
+function bargainValue(role, offerPrice = getBargainPrice(role)) {
+  if (offerPrice == null) return null;
+  return materialGoldAtPrice(role, offerPrice);
+}
+
+function bargainCellHtml(role) {
+  const bounds = bargainPriceBounds(role);
+  if (!bounds) return `<span class="muted">-</span>`;
+  const offer = getBargainPrice(role);
+  const value = fmtRatioAmount(bargainValue(role, offer));
+  const key = roleKey(role);
+  return `<div class="bargain-cell" data-role-key="${esc(key)}">
+    <input
+      type="number"
+      class="bargain-input"
+      data-role-key="${esc(key)}"
+      min="${bounds.min}"
+      max="${bounds.max}"
+      step="1"
+      value="${offer}"
+      title="还价范围 ${bounds.min}～${bounds.max}；估值 = 物资金币 ÷ 还价"
+      aria-label="还价"
+    >
+    <div class="bargain-value" title="物资金币 ÷ 还价">${esc(value)}</div>
+  </div>`;
 }
 
 function materialGold(role) {
@@ -1333,7 +1421,7 @@ function closeRoleModal() {
 }
 
 const DESC_SORT_KEYS = new Set([
-  "material_ratio", "material_ratio_p10", "material_ratio_p20", "material_ratio_p50",
+  "material_ratio", "markup_p10", "markup_p20", "markup_p50",
   "material_price", "material_gold", "gold_ratio", "gold_value", "gold", "freeze", "price", "xianyu",
   "pet_slot", "shenshou", "shendoudou", "baoshichui", "jinliulu", "jinghua", "wuse_shi", "qiannengguo", "jingmai", "qianyuan",
   "current_exp", "total_exp", "usable_exp", "boost89", "boost115",
@@ -1341,9 +1429,9 @@ const DESC_SORT_KEYS = new Set([
 
 const ROLE_SORT_KEYS = {
   material_ratio: (role) => materialPerYuanWan(role) ?? -1,
-  material_ratio_p10: (role) => materialRatioAtPriceBump(role, 0.10) ?? -1,
-  material_ratio_p20: (role) => materialRatioAtPriceBump(role, 0.20) ?? -1,
-  material_ratio_p50: (role) => materialRatioAtPriceBump(role, 0.50) ?? -1,
+  markup_p10: (role) => markupValue(role, 0.10) ?? -1,
+  markup_p20: (role) => markupValue(role, 0.20) ?? -1,
+  markup_p50: (role) => markupValue(role, 0.50) ?? -1,
   material_price: (role) => materialPriceYuan(role),
   material_gold: (role) => materialGold(role),
   gold_ratio: (role) => materialGoldPriceRatio(role) ?? -1,
@@ -1390,7 +1478,6 @@ const MOBILE_SORTS = [
   ["price", "价格"],
   ["gold", "金币"],
   ["trade_credit", "信誉"],
-  ["usable_exp", "可使用经验"],
   ["boost115", "直升115"],
   ["boost89", "直升89"],
   ["level", "等级"],
@@ -1446,8 +1533,9 @@ function renderRoleCard(r) {
       <div class="role-card-kv"><div class="k">物资估算金币</div><div class="v gold">${materialGoldCellHtml(r)}</div></div>
       <div class="role-card-kv"><div class="k">金币比例</div><div class="v ratio">${esc(fmtMaterialGoldPriceRatio(r))}</div></div>
       <div class="role-card-kv"><div class="k">金币估值</div><div class="v ratio">${materialPriceCellHtml(r)}</div></div>
+      <div class="role-card-kv"><div class="k">加价估值</div><div class="v">${markupValuesCellHtml(r)}</div></div>
+      <div class="role-card-kv"><div class="k">还价估值</div><div class="v">${bargainCellHtml(r)}</div></div>
       <div class="role-card-kv"><div class="k">信誉</div><div class="v">${esc(fmtTradeCredit(r))}</div></div>
-      <div class="role-card-kv"><div class="k">可使用经验</div><div class="v">${esc(fmtExpYi(usableExp(r)))}</div></div>
       <div class="role-card-kv"><div class="k">神兽</div><div class="v">${esc(shenshouCount(r) || "-")}</div></div>
       <div class="role-card-kv"><div class="k">金柳露</div><div class="v">${esc(keyItemCount(r, "jinliulu") || "-")}</div></div>
       <div class="role-card-kv"><div class="k">精华</div><div class="v">${esc(keyItemCount(r, "jinghua") || "-")}</div></div>
@@ -1457,7 +1545,7 @@ function renderRoleCard(r) {
       <div class="role-card-kv"><div class="k">乾元丹</div><div class="v">${esc(fmtNum(r["乾元丹"]))}</div></div>
       <div class="role-card-kv"><div class="k">经脉</div><div class="v">${esc(fmtNum(r["经脉点数"]))}</div></div>
     </div>
-    <div class="boost-bars">${renderBoostBar(boost89(r), "89")}${renderBoostBar(boost115(r), "115")}</div>
+    <div class="boost-bars">${renderBoostBar(boost89(r), "直升89", { showLabel: false })}${renderBoostBar(boost115(r), "直升115", { showLabel: false })}</div>
     ${itemTags || shenshou ? `<div class="role-card-items">${itemTags}${shenshou ? `<span class="tag key-item">${esc(`神兽 ${shenshou}`)}</span>` : ""}</div>` : ""}
   </article>`;
 }
@@ -1469,7 +1557,18 @@ function sortHeaderHtml(label, key) {
   return `${esc(label)}<span class="${cls}" aria-label="${active ? (roleSort.dir === "asc" ? "升序" : "降序") : "可排序"}">${arrow}</span>`;
 }
 
+function mountPagination(host) {
+  if (!paginationBar || !host) return;
+  if (paginationBar.parentElement !== host) host.appendChild(paginationBar);
+}
+
+function defaultPaginationHost() {
+  return $("#paginationHost") || document.querySelector("main");
+}
+
 function renderRoles(roles) {
+  // 先把翻页条挪出面板，避免 innerHTML 重建时销毁节点与事件
+  mountPagination(defaultPaginationHost());
   if (!DATA.loaded) {
     rolesPanel.innerHTML = '<div class="empty">数据加载中…</div>';
     return;
@@ -1480,7 +1579,7 @@ function renderRoles(roles) {
   }
   const sorted = sortRoles(roles);
   const totals = computeItemTotals(roles);
-  rolesPanel.innerHTML = `<div class="roles-list">${renderListSummary(totals)}${renderMobileSortBar()}<div class="role-cards mobile-only">${sorted.map(renderRoleCard).join("")}</div><div class="table-wrap desktop-only"><table class="roles-table">
+  rolesPanel.innerHTML = `<div class="roles-list">${renderMobileSortBar()}<div class="role-cards mobile-only">${sorted.map(renderRoleCard).join("")}</div><div class="table-wrap desktop-only"><table class="roles-table">
     <thead><tr>
       <th>大区</th>
       <th>服务器</th>
@@ -1495,6 +1594,8 @@ function renderRoles(roles) {
       <th class="num sortable col-material-gold" data-sort="material_gold" title="悬停查看物资估算明细">${sortHeaderHtml("物资估算金币", "material_gold")}</th>
       <th class="num sortable col-material-ratio" data-sort="gold_ratio" title="物资金币 ÷ 售价">${sortHeaderHtml("金币比例", "gold_ratio")}</th>
       <th class="num sortable col-material-price" data-sort="gold_value" title="物资金币 ÷ 金价（默认 10000，可在物资设置里改）；悬停看明细">${sortHeaderHtml("金币估值", "gold_value")}</th>
+      <th class="col-markup" title="物资金币 ÷ 调价（售价×(1+加价)）">加价估值</th>
+      <th class="col-bargain" title="输入还价（售价-20%～售价-1），估值 = 物资金币 ÷ 还价">还价估值</th>
       <th class="sortable" data-sort="trade_credit" title="交易信誉等级·交易所需小时">${sortHeaderHtml("信誉", "trade_credit")}</th>
       <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
       <th class="num sortable" data-sort="shendoudou">${sortHeaderHtml("神兜兜", "shendoudou")}</th>
@@ -1507,9 +1608,6 @@ function renderRoles(roles) {
       <th class="num sortable" data-sort="wuse_shi">${sortHeaderHtml("四色石", "wuse_shi")}</th>
       <th class="num sortable" data-sort="pet_slot">${sortHeaderHtml("宠物格子", "pet_slot")}</th>
       <th>任务</th>
-      <th class="num sortable" data-sort="current_exp">${sortHeaderHtml("当前经验", "current_exp")}</th>
-      <th class="num sortable" data-sort="total_exp">${sortHeaderHtml("总经验", "total_exp")}</th>
-      <th class="num sortable" data-sort="usable_exp">${sortHeaderHtml("可使用经验", "usable_exp")}</th>
       <th class="num sortable" data-sort="qiannengguo" title="潜能果使用数量">${sortHeaderHtml("潜能果", "qiannengguo")}</th>
       <th class="num sortable" data-sort="qianyuan" title="拥有乾元丹数量">${sortHeaderHtml("乾元丹", "qianyuan")}</th>
       <th class="num sortable" data-sort="jingmai" title="当前经脉方案已激活点数">${sortHeaderHtml("经脉", "jingmai")}</th>
@@ -1532,21 +1630,20 @@ function renderRoles(roles) {
         <td class="num material-gold col-material-gold">${materialGoldCellHtml(r)}</td>
         <td class="num ratio col-material-ratio">${esc(fmtMaterialGoldPriceRatio(r))}</td>
         <td class="num col-material-price">${materialPriceCellHtml(r)}</td>
+        <td class="col-markup">${markupValuesCellHtml(r)}</td>
+        <td class="col-bargain">${bargainCellHtml(r)}</td>
         <td>${esc(fmtTradeCredit(r))}</td>
         <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
         <td class="num">${esc(keyItemCount(r, "shendoudou") || "-")}</td>
         <td class="num">${esc(keyItemCount(r, "baoshichui") || "-")}</td>
-        <td class="col-boost">${renderBoostBar(boost89(r), "89")}</td>
-        <td class="col-boost">${renderBoostBar(boost115(r), "115")}</td>
+        <td class="col-boost">${renderBoostBar(boost89(r), "直升89", { showLabel: false })}</td>
+        <td class="col-boost">${renderBoostBar(boost115(r), "直升115", { showLabel: false })}</td>
         <td class="num shenshou col-shenshou">${esc(shenshouCount(r) || "-")}</td>
         <td class="num item-jinliulu">${esc(keyItemCount(r, "jinliulu") || "-")}</td>
         <td class="num item-jinghua">${esc(keyItemCount(r, "jinghua") || "-")}</td>
         <td class="num item-wuse-shi">${esc(keyItemCount(r, "wuse_shi") || "-")}</td>
         <td class="num">${esc(r["宠物格子数"] ?? "-")}</td>
         <td class="task-cell">${fmtCrawlTasks(r)}</td>
-        <td class="num exp">${esc(fmtExpYi(currentExp(r)))}</td>
-        <td class="num exp">${esc(fmtExpYi(totalExp(r)))}</td>
-        <td class="num exp">${esc(fmtExpYi(usableExp(r)))}</td>
         <td class="num">${esc(fmtNum(r["潜能果"]))}</td>
         <td class="num">${esc(fmtNum(r["乾元丹"]))}</td>
         <td class="num">${esc(fmtNum(r["经脉点数"]))}</td>
@@ -1555,7 +1652,16 @@ function renderRoles(roles) {
         <td class="num">${esc(fmtNum(r["召唤灵评分"]))}</td>
       </tr>
     `).join("")}</tbody>
-  </table></div></div>`;
+  </table></div>
+  <div class="roles-footer"><div class="roles-pagination-host"></div></div>
+  ${renderListSummary(totals)}
+  </div>`;
+  const activeTab = document.querySelector(".tab.active")?.dataset.tab || "roles";
+  if (activeTab === "roles") {
+    mountPagination(rolesPanel.querySelector(".roles-pagination-host"));
+  } else {
+    mountPagination(defaultPaginationHost());
+  }
 }
 
 function renderDataCard(row, columns) {
@@ -1793,7 +1899,7 @@ async function fetchRoles(page = DATA.page) {
     page: String(page),
     page_size: String(DATA.pageSize),
     sort: PRICE_BUMP_SORT_KEYS.has(roleSort.key)
-      ? "material_ratio"
+      ? "gold_ratio"
       : (roleSort.key === "material_price" || roleSort.key === "gold_value")
         ? "material_gold"
         : roleSort.key,
@@ -1861,6 +1967,12 @@ document.querySelectorAll(".tab").forEach((btn) => {
     document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(`${btn.dataset.tab}Panel`).classList.add("active");
+    if (btn.dataset.tab === "roles") {
+      const slot = rolesPanel.querySelector(".roles-pagination-host");
+      mountPagination(slot || defaultPaginationHost());
+    } else {
+      mountPagination(defaultPaginationHost());
+    }
   });
 });
 
@@ -2185,6 +2297,7 @@ window.addEventListener("scroll", hideMaterialHoverTip, true);
 window.addEventListener("resize", hideMaterialHoverTip);
 
 rolesPanel.addEventListener("click", (e) => {
+  if (e.target.closest(".bargain-cell, .bargain-input")) return;
   const sortHeader = e.target.closest("th.sortable");
   if (e.target.id === "mobileSort" || e.target.closest?.("#mobileSort")) {
     return;
@@ -2209,7 +2322,34 @@ rolesPanel.addEventListener("click", (e) => {
   }
 });
 
+rolesPanel.addEventListener("input", (e) => {
+  const input = e.target.closest(".bargain-input");
+  if (!input) return;
+  const role = DATA.roles.find((r) => roleKey(r) === input.dataset.roleKey);
+  if (!role) return;
+  const value = setBargainPrice(role, input.value);
+  if (value == null) return;
+  input.value = String(value);
+  const cell = input.closest(".bargain-cell");
+  const out = cell?.querySelector(".bargain-value");
+  if (out) out.textContent = fmtRatioAmount(bargainValue(role, value));
+});
+
+rolesPanel.addEventListener("change", (e) => {
+  const input = e.target.closest(".bargain-input");
+  if (!input) return;
+  const role = DATA.roles.find((r) => roleKey(r) === input.dataset.roleKey);
+  if (!role) return;
+  const value = setBargainPrice(role, input.value);
+  if (value == null) return;
+  input.value = String(value);
+  const cell = input.closest(".bargain-cell");
+  const out = cell?.querySelector(".bargain-value");
+  if (out) out.textContent = fmtRatioAmount(bargainValue(role, value));
+});
+
 rolesPanel.addEventListener("keydown", (e) => {
+  if (e.target.closest(".bargain-input")) return;
   if (e.key !== "Enter" && e.key !== " ") return;
   const row = e.target.closest(".role-row");
   if (!row) return;
