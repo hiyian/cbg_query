@@ -1428,11 +1428,11 @@ function renderRoleCard(r) {
     <div class="role-card-grid">
       <div class="role-card-kv"><div class="k">金币</div><div class="v gold">${esc(fmtGoldWan(r))}万</div></div>
       <div class="role-card-kv"><div class="k">物资估算金币</div><div class="v gold">${materialGoldCellHtml(r)}</div></div>
+      <div class="role-card-kv"><div class="k">金币估值</div><div class="v gold">${esc(fmtGoldValue(r))}</div></div>
+      <div class="role-card-kv"><div class="k">物资估值</div><div class="v ratio">${materialPriceCellHtml(r)}</div></div>
       <div class="role-card-kv"><div class="k">信誉</div><div class="v">${esc(fmtTradeCredit(r))}</div></div>
       <div class="role-card-kv"><div class="k">1元金币</div><div class="v ratio">${esc(fmtGoldPerYuan(r))}</div></div>
       <div class="role-card-kv"><div class="k">1元物资</div><div class="v ratio">${esc(fmtMaterialRatio(r))}</div></div>
-      <div class="role-card-kv"><div class="k">金币估值</div><div class="v gold">${esc(fmtGoldValue(r))}</div></div>
-      <div class="role-card-kv"><div class="k">物资估值</div><div class="v ratio">${materialPriceCellHtml(r)}</div></div>
       ${PRICE_BUMPS.map((item) =>
         `<div class="role-card-kv"><div class="k">${esc(item.label)}</div><div class="v ratio">${esc(fmtMaterialRatioAtPriceBump(r, item.bump))}</div></div>`
       ).join("")}
@@ -1477,6 +1477,8 @@ function renderRoles(roles) {
       <th class="num sortable" data-sort="gold">${sortHeaderHtml("金币(万)", "gold")}</th>
       <th class="num sortable" data-sort="freeze">${sortHeaderHtml("冻结金币(万)", "freeze")}</th>
       <th class="num sortable col-material-gold" data-sort="material_gold" title="悬停查看物资估算明细">${sortHeaderHtml("物资估算金币", "material_gold")}</th>
+      <th class="num sortable" data-sort="gold_value" title="按金价折算：金币÷金价。金价可在下方物资设置里改">${sortHeaderHtml("金币估值", "gold_value")}</th>
+      <th class="num sortable col-material-price" data-sort="material_price" title="按金价折算的物资估值；悬停看明细。金价默认 10000（1元=1万金币）">${sortHeaderHtml("物资估值", "material_price")}</th>
       <th class="sortable" data-sort="trade_credit" title="交易信誉等级·交易所需小时">${sortHeaderHtml("信誉", "trade_credit")}</th>
       <th class="num sortable" data-sort="xianyu">${sortHeaderHtml("仙玉", "xianyu")}</th>
       <th class="num sortable" data-sort="shendoudou">${sortHeaderHtml("神兜兜", "shendoudou")}</th>
@@ -1489,8 +1491,6 @@ function renderRoles(roles) {
       <th class="col-boost sortable" data-sort="boost115">${sortHeaderHtml("直升115", "boost115")}</th>
       <th class="num sortable" data-sort="gold_ratio" title="售价每 1 元对应多少万金币">${sortHeaderHtml("1元金币", "gold_ratio")}</th>
       <th class="num sortable col-material-ratio" data-sort="material_ratio" title="售价每 1 元对应多少万物资金币">${sortHeaderHtml("1元物资", "material_ratio")}</th>
-      <th class="num sortable" data-sort="gold_value" title="按金价折算：金币÷金价。金价可在下方物资设置里改">${sortHeaderHtml("金币估值", "gold_value")}</th>
-      <th class="num sortable col-material-price" data-sort="material_price" title="按金价折算的物资估值；悬停看明细。金价默认 10000（1元=1万金币）">${sortHeaderHtml("物资估值", "material_price")}</th>
       ${PRICE_BUMPS.map((item) =>
         `<th class="num sortable col-material-ratio col-material-bump" data-sort="${esc(item.key)}">${sortHeaderHtml(item.short, item.key)}</th>`
       ).join("")}
@@ -1519,6 +1519,8 @@ function renderRoles(roles) {
         <td class="num gold">${esc(fmtGoldWan(r))}</td>
         <td class="num freeze">${esc(fmtFreezeWan(r))}</td>
         <td class="num material-gold col-material-gold">${materialGoldCellHtml(r)}</td>
+        <td class="num gold">${esc(fmtGoldValue(r))}</td>
+        <td class="num col-material-price">${materialPriceCellHtml(r)}</td>
         <td>${esc(fmtTradeCredit(r))}</td>
         <td class="num xianyu">${esc(fmtNum(r["仙玉"]))}</td>
         <td class="num">${esc(keyItemCount(r, "shendoudou") || "-")}</td>
@@ -1531,8 +1533,6 @@ function renderRoles(roles) {
         <td class="col-boost">${renderBoostBar(boost115(r), "115")}</td>
         <td class="num ratio">${esc(fmtGoldPerYuan(r))}</td>
         <td class="num ratio col-material-ratio">${esc(fmtMaterialRatio(r))}</td>
-        <td class="num gold">${esc(fmtGoldValue(r))}</td>
-        <td class="num col-material-price">${materialPriceCellHtml(r)}</td>
         ${PRICE_BUMPS.map((item) =>
           `<td class="num ratio col-material-ratio col-material-bump">${esc(fmtMaterialRatioAtPriceBump(r, item.bump))}</td>`
         ).join("")}
